@@ -1,0 +1,6249 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<!-- 読み込み・通信先の制限（通信は Gemini API のみ許可） -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src https://generativelanguage.googleapis.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<title>KOTOHANA - 心身相談＆市販薬事前チェックサポート</title>
+<!-- Tailwind CSS for styling -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- html2pdf.js for generating PDF cards -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<!-- html2canvas for generating PNG images -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&family=Zen+Maru+Gothic:wght@400;500;700&display=swap" rel="stylesheet">
+
+
+<style>
+body {
+font-family: 'Zen Maru Gothic', 'Plus Jakarta Sans', 'Hiragino Maru Gothic ProN', 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', 'Meiryo', sans-serif;
+}
+/* Custom scrollbar for better chat experience */
+#chat-container::-webkit-scrollbar {
+width: 5px;
+}
+#chat-container::-webkit-scrollbar-track {
+background: transparent;
+}
+#chat-container::-webkit-scrollbar-thumb {
+background-color: #cbd5e1;
+border-radius: 10px;
+}
+#chat-container, #input-container {
+-webkit-overflow-scrolling: touch;
+overscroll-behavior: contain;
+}
+/* Touch friendly tap highlights */
+* {
+-webkit-tap-highlight-color: transparent;
+}
+/* Tailwind に存在しない active:scale-98 を補完 */
+.active\:scale-98:active { transform: scale(0.98); }
+
+
+/* 押しやすいボタンサイズ（スマホ向け） */
+#input-container button { min-height: 40px; }
+#input-container label { min-height: 36px; }
+#input-container button:disabled { opacity: .55; cursor: not-allowed; }
+#back-btn:disabled { opacity: .45; cursor: not-allowed; }
+
+
+/* 長い文章・長い選択肢のはみ出し防止 */
+#chat-container .bubble, #input-container label span, #input-container button span,
+#pdf-card, #pdf-card * { overflow-wrap: anywhere; word-break: break-word; }
+
+
+/* iOS で入力欄フォーカス時に画面が拡大されるのを防ぐ（16px未満で拡大される） */
+@media (max-width: 640px) {
+#input-container input[type="text"], #input-container input[type="date"],
+#input-container input[type="number"], #input-container select, #input-container textarea {
+font-size: 16px;
+}
+}
+
+
+/* ローディング */
+@keyframes kotohana-spin { to { transform: rotate(360deg); } }
+.kotohana-spinner { animation: kotohana-spin 0.9s linear infinite; }
+
+
+/* チャットの吹き出しをふわっと表示 */
+@keyframes kotohana-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+#chat-container > div:last-child { animation: kotohana-in .28s ease-out; }
+
+
+/* チェックした選択肢をはっきり見せる */
+#input-container label:not(.plain):has(> input[type="checkbox"]:checked) {
+border-color: #0d9488; background: #f0fdfa; box-shadow: inset 0 0 0 1px #0d9488;
+}
+#input-container label:not(.plain):has(> input[name="redflag"]:checked) {
+border-color: #e11d48; background: #fff1f2; box-shadow: inset 0 0 0 1px #e11d48;
+}
+#input-container label:not(.plain):has(> input[name^="mental_"]:checked) {
+border-color: #7e22ce; background: #faf5ff; box-shadow: inset 0 0 0 1px #7e22ce;
+}
+
+
+/* 動きを減らす設定の端末ではアニメーションを止める */
+@media (prefers-reduced-motion: reduce) {
+*, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+
+/* 印刷専用領域（画面では非表示） */
+#print-root { display: none; }
+
+
+/* Print styles */
+@media print {
+@page { size: A4 portrait; margin: 10mm; }
+html, body {
+background: #ffffff !important;
+padding: 0 !important;
+margin: 0 !important;
+height: auto !important;
+min-height: 0 !important;
+display: block !important;
+}
+body > *:not(#print-root) {
+display: none !important;
+}
+#print-root {
+display: block !important;
+width: 100% !important;
+}
+#print-root .print-card {
+max-width: 180mm;
+margin: 0 auto;
+border: 2px solid #0d9488 !important;
+box-shadow: none !important;
+}
+#print-root .print-card.mental { border-color: #9333ea !important; }
+#print-root .print-card > * { break-inside: avoid; page-break-inside: avoid; }
+#print-root, #print-root * {
+-webkit-print-color-adjust: exact !important;
+print-color-adjust: exact !important;
+}
+.no-print {
+display: none !important;
+}
+}
+</style>
+</head>
+<body class="bg-gradient-to-br from-teal-50 via-slate-50 to-emerald-50 text-slate-800 min-h-screen flex items-center justify-center p-0 sm:p-4">
+
+
+<div class="w-full sm:max-w-md bg-white/95 backdrop-blur-md sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col h-[100dvh] sm:h-[94vh] sm:max-h-[820px] border-0 sm:border border-teal-100">
+
+
+<!-- Header Section -->
+<div id="main-header" class="bg-gradient-to-r from-teal-700 via-teal-600 to-emerald-600 text-white p-3 sm:p-4 shadow-md flex-shrink-0 relative transition-all duration-300">
+<div class="flex items-center justify-between gap-2">
+<h1 class="font-bold text-sm sm:text-lg tracking-wide flex items-center gap-1.5 sm:gap-2 min-w-0">
+<span id="header-icon" class="text-lg sm:text-xl">🌱</span>
+<span id="header-title">KOTOHANA</span>
+<span id="header-badge" class="text-[9px] sm:text-[10px] bg-white/20 backdrop-blur-md text-white font-medium px-2 py-0.5 rounded-full border border-white/20 whitespace-nowrap">安心の匿名サポート</span>
+</h1>
+<span id="header-subtitle" class="text-[10px] sm:text-xs text-teal-100 font-medium whitespace-nowrap">心と体の相談メモ</span>
+</div>
+<p id="header-desc" class="text-[10px] sm:text-[11px] opacity-90 mt-1 sm:mt-1.5 leading-relaxed">伝えにくい不調やけが、悩みをカードに整理して周囲や専門家へ共有できます</p>
+</div>
+
+
+<!-- Safety Disclaimer Banner -->
+<div id="safety-banner" class="bg-amber-50/90 border-b border-amber-200/60 text-amber-900 px-3 py-1.5 sm:px-3.5 sm:py-2 text-[10px] sm:text-[11px] leading-snug sm:leading-relaxed flex items-start gap-1.5 sm:gap-2 flex-shrink-0">
+<span class="text-amber-600 font-bold text-xs sm:text-sm">💡</span>
+<div>
+このアプリは診断をするものではありません。整理したメモ（KOTOHANAカード）を保護者、保健室の先生、ドラッグストアの薬剤師さんへスムーズに提示するためのツールです。
+</div>
+</div>
+
+
+<!-- Progress Header & Back Control -->
+<div id="step-nav" class="bg-slate-100/80 px-3 py-1.5 border-b border-slate-200 flex items-center justify-between gap-2 text-[10px] sm:text-[11px] font-bold text-slate-600 flex-shrink-0">
+<button id="back-btn" type="button" onclick="goBackStep()" class="hidden text-teal-800 hover:text-teal-900 bg-white px-2.5 py-1.5 rounded-lg border border-slate-200 shadow-sm active:scale-95 flex items-center gap-1 whitespace-nowrap">
+<span>↩️</span>
+<span>1つ前に戻る</span>
+</button>
+<div class="flex items-center gap-2 ml-auto min-w-0">
+<span id="step-indicator" class="text-slate-500 text-right" aria-live="polite">準備中...</span>
+</div>
+</div>
+
+
+<!-- Progress Bar -->
+<div class="h-1 bg-slate-200 flex-shrink-0" aria-hidden="true">
+<div id="progress-bar" class="h-full bg-teal-600 transition-all duration-500" style="width:0%"></div>
+</div>
+
+
+<!-- Chat Container -->
+<div id="chat-container" class="flex-1 min-h-0 p-3 sm:p-4 overflow-y-auto space-y-3 sm:space-y-4 bg-slate-50/50" aria-live="polite"></div>
+
+
+<!-- Input / Dynamic Controls Area -->
+<div id="input-container" class="p-2.5 sm:p-3.5 bg-white border-t border-slate-100 flex-shrink-0 shadow-lg max-h-[55dvh] overflow-y-auto"></div>
+</div>
+
+
+<!-- 印刷専用（画面には表示されません） -->
+<div id="print-root" aria-hidden="true"></div>
+
+
+<script>
+'use strict';
+
+
+// ============================================================
+// 🔑 Gemini API の設定（ここだけ編集してください）
+// ============================================================
+// ・下の '' の中に、Google AI Studio で「新しく発行した」APIキーを貼り付けます。
+// 例） const GEMINI_API_KEY = 'あなたの新しいキー';
+// ・以前このファイルに書かれていた（漏えいした）キーは絶対に使わないでください。
+// ・空のままでもアプリは動きます（AIの代わりに定型文の助言でカードを作成）。
+// ・このファイルは自分のPC内だけで使い、キーを入れたまま他人に渡したり、
+// インターネットに公開したり、GitHub に上げたりしないでください。
+const GEMINI_API_KEY = '';
+const GEMINI_MODEL = 'gemini-3.8-flash';
+// ============================================================
+
+
+const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models/';
+const ADVICE_TIMEOUT_MS = 15000; // AIの応答待ち上限（ミリ秒）
+const GEMINI_MAX_OUTPUT_TOKENS = 1024; // 出力トークン上限（思考トークンも含むため余裕を持たせる）
+const MAXLEN_SHORT = 100; // 1行入力の上限文字数
+const MAXLEN_LONG = 300; // メッセージ欄の上限文字数
+
+
+// 選択肢（AIに送ってよいのはこの一覧に含まれる値だけ）
+const SYMPTOM_OPTIONS = ['頭痛・めまい', '腹痛・胃痛', '発熱・寒気・のど痛', '鼻水・鼻づまり・くしゃみ', '吐き気・下痢', '生理痛', 'かゆみ・湿疹・虫刺され', '擦り傷・切り傷', '打撲・捻挫・痛む箇所', 'やけど（火傷）'];
+const ONSET_OPTIONS = ['今日・さっきから', '昨日の夜から', '数日前から続いている', '1週間以上前からずっと'];
+
+
+// 緊急性の高い言葉（自由記入欄のチェック用）
+const CRISIS_PATTERN = /(死にたい|しにたい|シニタイ|死んでしまいたい|しんでしまいたい|死のう|消えたい|きえたい|消えてしまいたい|きえてしまいたい|自殺|自傷|リスカ|リストカット|自分を傷つけ|首を吊|首をつ|飛び降り|とびおり|生きていたくない|生きるのがつらい|いなくなりたい|オーバードーズ|過量服薬|薬をたくさん飲)/i;
+const PHYSICAL_EMERGENCY_PATTERN = /(息ができな|呼吸ができな|呼吸が苦し|息が苦し|意識がな|意識が遠|意識がもうろう|反応がな|けいれん|痙攣|血が止まらな|大量に出血|大量の出血|胸が締め付け|激しい胸の痛み|胸が激しく痛|アナフィラキシー|唇が腫れ|顔が腫れ|ろれつが回らな|顔の片側|手足が動かな)/;
+
+
+// ============================================================
+// グローバル状態管理
+// ============================================================
+const DEFAULT_STATE = Object.freeze({
+mode: 'physical', // 'physical' or 'mental'
+birthdate: '',
+calculatedAge: '',
+ageGroup: '',
+height: '',
+weight: '',
+pregnancy: 'いいえ',
+redFlags: [],
+symptom: '',
+symptomChips: [],
+onset: '',
+severity: '5',
+impact: '',
+impactChips: [],
+feelingChips: [],
+currentMeds: '',
+allergies: '',
+history: '',
+doping: '',
+expectations: '',
+finalNotes: '',
+destination: '',
+isEmergency: false,
+geminiAdvice: '',
+adviceSource: ''
+});
+
+
+const state = {};
+let currentStep = 0;
+let conversationHistory = [];
+let inputMemory = {}; // 「戻る」で入力欄を復元するための記録（状態の巻き戻し対象外）
+let isBusy = false; // カード作成中（非同期処理中）
+let isExporting = false; // PNG/PDF 保存中
+let flowToken = 0; // やり直し・戻る操作で古い非同期処理の結果を無視するための番号
+let currentAbort = null; // 進行中の API 通信
+let suppressBotMessages = false;
+const adviceCache = new Map(); // 同じ内容でAPIを再呼び出ししないためのキャッシュ
+
+
+const chatContainer = document.getElementById('chat-container');
+const inputContainer = document.getElementById('input-container');
+const stepIndicator = document.getElementById('step-indicator');
+const backBtn = document.getElementById('back-btn');
+
+
+function resetState() {
+const fresh = JSON.parse(JSON.stringify(DEFAULT_STATE));
+Object.keys(state).forEach(k => delete state[k]);
+Object.assign(state, fresh);
+}
+resetState();
+
+
+// ============================================================
+// 汎用ユーティリティ
+// ============================================================
+function esc(value) {
+return String(value ?? '').replace(/[&<>"']/g, c => ({
+'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+}[c]));
+}
+
+
+// **太字** だけを許可した安全なメッセージ整形（それ以外のHTMLはすべて無効化）
+function formatMessage(text) {
+return esc(text).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+}
+
+
+function clip(value, max) {
+return String(value ?? '').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '').trim().slice(0, max);
+}
+
+
+function isNone(value) {
+const v = String(value ?? '').trim();
+return v === '' || /^(なし|無し|ない|特になし|とくになし|特に無し|no|none)$/i.test(v);
+}
+
+
+function isMentalMode() {
+return state.mode === 'mental';
+}
+
+
+// 入力欄を描画し、以前の入力内容があれば復元する
+function setControls(html) {
+inputContainer.innerHTML = html;
+applyInputMemory();
+inputContainer.scrollTop = 0;
+}
+
+
+function rememberInputs() {
+if (!inputContainer) return;
+const groups = {};
+inputContainer.querySelectorAll('input, select, textarea').forEach(el => {
+if (el.type === 'checkbox' && el.name) {
+groups[el.name] = groups[el.name] || [];
+if (el.checked) groups[el.name].push(el.value);
+} else if (el.id) {
+inputMemory[el.id] = el.value;
+}
+});
+Object.keys(groups).forEach(name => { inputMemory['cb:' + name] = groups[name]; });
+}
+
+
+function applyInputMemory() {
+inputContainer.querySelectorAll('input, select, textarea').forEach(el => {
+if (el.type === 'checkbox' && el.name) {
+const saved = inputMemory['cb:' + el.name];
+if (Array.isArray(saved)) el.checked = saved.includes(el.value);
+} else if (el.id && Object.prototype.hasOwnProperty.call(inputMemory, el.id)) {
+const saved = inputMemory[el.id];
+if (el.tagName === 'SELECT' && ![...el.options].some(o => o.value === saved)) return;
+el.value = saved;
+if (el.type === 'range') el.dispatchEvent(new Event('input'));
+}
+});
+}
+
+
+function showInlineError(message) {
+let box = document.getElementById('inline-error');
+if (!box) {
+box = document.createElement('div');
+box.id = 'inline-error';
+box.setAttribute('role', 'alert');
+box.className = 'mb-2 bg-rose-50 border border-rose-300 text-rose-800 text-[11px] font-bold rounded-xl px-2.5 py-1.5';
+inputContainer.prepend(box);
+}
+box.textContent = '⚠️ ' + message;
+inputContainer.scrollTop = 0;
+}
+
+
+// テキスト欄で Enter を押したら、その画面の決定ボタンを押す（日本語の変換確定中は無視）
+inputContainer.addEventListener('keydown', e => {
+if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return;
+const t = e.target;
+if (!(t instanceof HTMLInputElement) || !['text', 'number', 'date'].includes(t.type)) return;
+const btn = inputContainer.querySelector('[data-primary]');
+if (btn && !btn.disabled) { e.preventDefault(); btn.click(); }
+});
+
+
+// 入力し直したらエラー表示を消す
+inputContainer.addEventListener('input', () => {
+const box = document.getElementById('inline-error');
+if (box) box.remove();
+});
+
+
+// 入力途中でページを閉じそうになったら確認する（保存後・緊急画面では出さない）
+let hasExported = false;
+window.addEventListener('beforeunload', e => {
+if (currentStep > 0 && !state.isEmergency && !hasExported) {
+e.preventDefault();
+e.returnValue = '';
+}
+});
+
+
+function setBusy(busy) {
+isBusy = busy;
+if (backBtn) backBtn.disabled = busy;
+}
+
+
+// ============================================================
+// 起動・モード切替
+// ============================================================
+document.addEventListener('DOMContentLoaded', function() {
+startInitialFlow();
+});
+
+
+// keepMemory: 「戻る」で最初の画面へ戻ったときは入力内容の記録を残す
+function startInitialFlow(keepMemory = false) {
+flowToken++;
+if (currentAbort) { try { currentAbort.abort(); } catch (e) { /* noop */ } currentAbort = null; }
+setBusy(false);
+isExporting = false;
+hasExported = false;
+currentStep = 0;
+conversationHistory = [];
+if (!keepMemory) inputMemory = {};
+resetState();
+setThemeStyle('physical');
+if (chatContainer) chatContainer.innerHTML = '';
+const printRoot = document.getElementById('print-root');
+if (printRoot) printRoot.innerHTML = '';
+addBotMessage("こんにちは。KOTOHANAへようこそ。ここは完全匿名で利用できる安心な場所です。\n\nまず最初に、**どのようなご相談**ですか？", true);
+updateStepIndicator("相談カテゴリーの選択");
+
+
+if (inputContainer) {
+setControls(`
+<div class="space-y-2">
+<button type="button" onclick="selectMode('physical')" class="w-full py-3 px-3.5 bg-gradient-to-r from-teal-50 to-emerald-50 hover:from-teal-100 hover:to-emerald-100 text-teal-900 border border-teal-200 rounded-2xl font-bold text-xs sm:text-sm text-left flex items-center justify-between gap-2 shadow-sm active:scale-98 cursor-pointer">
+<div class="flex items-center gap-2 min-w-0">
+<span class="text-lg">🩺</span>
+<div class="min-w-0">
+<div>体の不調・けが・痛みの相談</div>
+<div class="text-[10px] text-teal-700 font-normal">頭痛、腹痛、ねんざ、創傷、風邪症状など</div>
+</div>
+</div>
+<span class="text-teal-600">→</span>
+</button>
+<button type="button" onclick="selectMode('mental')" class="w-full py-3 px-3.5 bg-gradient-to-r from-purple-50 via-fuchsia-50 to-rose-50 hover:from-purple-100 hover:to-fuchsia-100 text-purple-950 border border-purple-200 rounded-2xl font-bold text-xs sm:text-sm text-left flex items-center justify-between gap-2 shadow-sm active:scale-98 cursor-pointer">
+<div class="flex items-center gap-2 min-w-0">
+<span class="text-lg">🌙</span>
+<div class="min-w-0">
+<div>心の相談・気分の不調（専用モード）</div>
+<div class="text-[10px] text-purple-700 font-normal">気持ちの整理・不安・疲れ・学校生活の悩み</div>
+</div>
+</div>
+<span class="text-purple-600">→</span>
+</button>
+</div>
+`);
+}
+}
+
+
+function updateStepIndicator(text) {
+if (stepIndicator) stepIndicator.innerText = text;
+const bar = document.getElementById('progress-bar');
+if (bar) {
+const total = isMentalMode() ? 7 : 11;
+const pct = currentStep <= 0 ? 0 : Math.min(100, Math.round((currentStep - 1) / total * 100));
+bar.style.width = (document.getElementById('pdf-card') || currentStep > total ? 100 : pct) + '%';
+bar.className = 'h-full transition-all duration-500 ' + (state.isEmergency ? 'bg-rose-600' : isMentalMode() ? 'bg-purple-600' : 'bg-teal-600');
+}
+if (backBtn) {
+if (currentStep > 0) backBtn.classList.remove('hidden');
+else backBtn.classList.add('hidden');
+backBtn.classList.toggle('text-teal-800', !isMentalMode());
+backBtn.classList.toggle('text-purple-800', isMentalMode());
+}
+}
+
+
+function stepLabel(text) {
+const total = isMentalMode() ? 7 : 11;
+if (currentStep < 1 || currentStep > total) return text;
+return `text（{currentStep}/${total}）`;
+}
+
+
+function setThemeStyle(mode) {
+const header = document.getElementById('main-header');
+const icon = document.getElementById('header-icon');
+const subtitle = document.getElementById('header-subtitle');
+const desc = document.getElementById('header-desc');
+
+
+if (!header || !icon || !subtitle || !desc) return;
+
+
+if (mode === 'mental') {
+header.className = "bg-gradient-to-r from-purple-900 via-purple-800 to-rose-900 text-white p-3 sm:p-4 shadow-md flex-shrink-0 relative transition-all duration-300";
+icon.innerText = "🌙";
+subtitle.innerText = "心の相談モード";
+subtitle.className = "text-[10px] sm:text-xs text-purple-200 font-medium whitespace-nowrap";
+desc.innerText = "不安・悲しみ・言葉にしにくい気持ちを静かに整理します";
+} else {
+header.className = "bg-gradient-to-r from-teal-700 via-teal-600 to-emerald-600 text-white p-3 sm:p-4 shadow-md flex-shrink-0 relative transition-all duration-300";
+icon.innerText = "🌱";
+subtitle.innerText = "心と体の相談メモ";
+subtitle.className = "text-[10px] sm:text-xs text-teal-100 font-medium whitespace-nowrap";
+desc.innerText = "伝えにくい不調やけが、悩みをカードに整理して周囲や専門家へ共有できます";
+}
+}
+
+
+function selectMode(mode) {
+if (isBusy || currentStep !== 0) return; // 二重タップ防止
+if (mode !== 'physical' && mode !== 'mental') return;
+if (inputMemory.__mode && inputMemory.__mode !== mode) inputMemory = {};
+saveStepState();
+state.mode = mode;
+inputMemory.__mode = mode;
+setThemeStyle(mode);
+currentStep = 1;
+if (mode === 'physical') {
+addUserMessage("🩺 体の不調・けが・痛みの相談");
+checkRedFlagsFirst();
+} else {
+addUserMessage("🌙 心の相談モードを選択しました");
+askMentalQuestions();
+}
+}
+
+
+// ============================================================
+// 「1つ前に戻る」
+// ============================================================
+// 回答を確定する直前の状態（質問が表示された状態のチャット・回答前の state）を保存する
+function saveStepState() {
+rememberInputs();
+conversationHistory.push({
+step: currentStep,
+state: JSON.parse(JSON.stringify(state)),
+chatHtml: chatContainer ? chatContainer.innerHTML : ''
+});
+}
+
+
+function goBackStep() {
+if (isBusy || isExporting) return;
+if (conversationHistory.length === 0) return;
+flowToken++;
+const prev = conversationHistory.pop();
+
+
+if (prev.step === 0) {
+startInitialFlow(true);
+return;
+}
+
+
+currentStep = prev.step;
+resetState();
+Object.assign(state, prev.state);
+if (chatContainer) {
+chatContainer.innerHTML = prev.chatHtml;
+chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+
+// 質問文はチャット内に残っているので、入力欄だけを描き直す（質問の重複を防ぐ）
+suppressBotMessages = true;
+try {
+renderCurrentStep();
+} finally {
+suppressBotMessages = false;
+}
+}
+
+
+function renderCurrentStep() {
+setThemeStyle(isMentalMode() ? 'mental' : 'physical');
+if (isMentalMode()) {
+askMentalQuestions();
+} else if (currentStep === 1) {
+checkRedFlagsFirst();
+} else {
+askPhysicalStep();
+}
+}
+
+
+// ============================================================
+// 緊急対応
+// ============================================================
+function showPhysicalEmergency() {
+state.isEmergency = true;
+addBotMessage("🚨 **【緊急メッセージ】**\n選択・入力された症状は、命にかかわる緊急性が高い可能性があります。\n通常の問診を中断します。今すぐ119番通報をするか、近くの大人・先生・保健室へ助けを求めてください！");
+updateStepIndicator("🚨 救急要請を最優先してください");
+
+
+setControls(`
+<div class="bg-rose-50 border-2 border-rose-500 rounded-2xl p-3.5 space-y-3 text-rose-950" role="alert">
+<div class="font-black text-xs text-rose-800">今すぐ行える緊急対応</div>
+<div class="space-y-1.5 text-[11px] font-bold">
+<div class="bg-white p-2 rounded-xl border border-rose-200 flex justify-between items-center gap-2">
+<span>🚑 救急車を呼ぶ (119番通報)</span>
+<a href="tel:119" class="bg-rose-600 text-white px-3 py-2 rounded-lg font-black text-xs whitespace-nowrap">今すぐ発信</a>
+</div>
+<div class="bg-white p-2 rounded-xl border border-rose-200">
+🏫 近くにいる保護者・先生・保健室の先生へ直接伝える
+</div>
+<div class="bg-white p-2 rounded-xl border border-rose-200">
+📞 救急車を呼ぶか迷うとき（救急安心センター事業・実施地域のみ）: <a href="tel:%237119" class="text-rose-700 underline font-black">#7119</a>
+</div>
+</div>
+<button type="button" onclick="startInitialFlow()" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl border border-slate-300">最初に戻る</button>
+</div>
+`);
+}
+
+
+function showMentalCrisis() {
+state.isEmergency = true;
+setThemeStyle('mental');
+addBotMessage("🚨 **【緊急の相談窓口のご案内】**\n話してくれてありがとう。1人で抱え込まず、今すぐ以下の窓口や周りの大人に助けを求めてください。\n通常の相談はここで中断します。");
+updateStepIndicator("🚨 緊急心のホットライン");
+setControls(`
+<div class="bg-rose-50 border-2 border-rose-500 rounded-2xl p-3.5 space-y-3 text-rose-950" role="alert">
+<div class="font-black text-xs text-rose-800">すぐ繋がる電話・チャット相談窓口</div>
+<div class="space-y-1.5 text-[11px] font-bold">
+<div class="bg-white p-2 rounded-xl border border-rose-200 flex justify-between items-center gap-2">
+<span>🚑 今まさに命の危険があるとき</span>
+<a href="tel:119" class="bg-rose-600 text-white px-3 py-2 rounded-lg font-black text-xs whitespace-nowrap">119番</a>
+</div>
+<div class="bg-white p-2 rounded-xl border border-rose-200">
+📞 24時間子供SOSダイヤル（無料・24時間）: <a href="tel:0120078310" class="text-rose-700 underline font-black">0120-0-78310</a>
+</div>
+<div class="bg-white p-2 rounded-xl border border-rose-200">
+📞 こころの健康相談統一ダイヤル: <a href="tel:0570064556" class="text-rose-700 underline font-black">0570-064-556</a>
+</div>
+<div class="bg-white p-2 rounded-xl border border-rose-200">
+💬 厚生労働省 SNS相談（LINE/チャット）: <a href="https://www.mhlw.go.jp/mamorouyokokoro/" target="_blank" rel="noopener noreferrer" class="text-rose-700 underline font-black">まもろうよ こころ</a>
+</div>
+<div class="bg-white p-2 rounded-xl border border-rose-200">
+🏫 近くにいる保護者・先生・保健室の先生に「今つらい」と伝える
+</div>
+</div>
+<button type="button" onclick="startInitialFlow()" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl border border-slate-300">最初に戻る</button>
+</div>
+`);
+}
+
+
+// 自由記入欄に緊急性の高い言葉が含まれていないか確認する。
+// 含まれていれば通常の問診を中断し true を返す。
+function guardFreeText(text) {
+const value = String(text || '');
+if (!value) return false;
+if (CRISIS_PATTERN.test(value)) {
+saveStepState();
+addUserMessage(value);
+showMentalCrisis();
+return true;
+}
+if (!isMentalMode() && PHYSICAL_EMERGENCY_PATTERN.test(value)) {
+saveStepState();
+addUserMessage(value);
+showPhysicalEmergency();
+return true;
+}
+return false;
+}
+
+
+// ============================================================
+// 身体相談モード
+// ============================================================
+function checkRedFlagsFirst() {
+addBotMessage("最初に、緊急性の高い症状がないか安全確認を行います。\n当てはまる項目があるかチェックしてください。");
+updateStepIndicator(stepLabel("🚨 緊急安全チェック"));
+const flags = [
+['息苦しさ・激しい呼吸困難', '🫁 息苦しさや呼吸が困難'],
+['意識が遠のく・呼びかけへの反応が悪い', '🧠 意識がおかしい・反応が悪い'],
+['突然の激しい頭痛', '💥 突然のバットで殴られたような激しい頭痛'],
+['強い胸の痛み・締め付け感', '💔 強い胸の痛みや締め付け'],
+['大量の出血', '🩸 止まらない大量の出血'],
+['重いアレルギー反応（アナフィラキシー）', '⚠️ 全身の蕁麻疹・腫れ・アレルギー反応'],
+['けいれん・手足が動かない・ろれつが回らない', '⚡ けいれん・手足のまひ・ろれつが回らない']
+];
+setControls(`
+<div class="space-y-2">
+<div class="bg-amber-50 p-2 rounded-xl border border-amber-200 text-[11px] text-amber-900">
+以下の<b>緊急の症状</b>に当てはまるものはありますか？（複数選択可）
+</div>
+<div class="grid grid-cols-1 gap-1.5 max-h-[180px] overflow-y-auto p-1 bg-slate-50 border border-slate-200 rounded-xl">
+${flags.map(([value, label]) => `
+<label class="flex items-center gap-2 p-2 bg-white rounded-lg border border-slate-200 text-[11px] font-bold text-slate-800 cursor-pointer">
+<input type="checkbox" name="redflag" value="${esc(value)}" class="accent-rose-600 rounded w-4 h-4 flex-shrink-0">
+<span>${esc(label)}</span>
+</label>`).join('')}
+</div>
+<div class="flex gap-2">
+<button type="button" onclick="submitRedFlags(false)" class="flex-1 py-2.5 bg-teal-700 hover:bg-teal-800 text-white font-bold rounded-xl text-xs shadow-sm active:scale-98">
+該当なし（通常の問診へ進む）
+</button>
+<button type="button" onclick="submitRedFlags(true)" class="py-2.5 px-3 bg-rose-700 hover:bg-rose-800 text-white font-bold rounded-xl text-xs shadow-sm active:scale-98 whitespace-nowrap">
+⚠️ 該当あり
+</button>
+</div>
+</div>
+`);
+}
+
+
+function submitRedFlags(hasFlags) {
+if (isBusy) return;
+const selected = [...document.querySelectorAll('input[name="redflag"]:checked')].map(c => c.value);
+// チェックが入っているのに「該当なし」が押された場合も、安全側に倒して緊急対応にする
+const isEmergency = hasFlags || selected.length > 0;
+saveStepState();
+if (isEmergency) {
+state.redFlags = selected.slice();
+const shown = selected.length ? selected : ["緊急性が疑われる重篤な症状"];
+addUserMessage("⚠️ 危険症状あり: " + shown.join('、'));
+showPhysicalEmergency();
+} else {
+state.redFlags = [];
+addUserMessage("✅ 緊急危険症状なし");
+currentStep = 2;
+askPhysicalStep();
+}
+}
+
+
+function askPhysicalStep() {
+setThemeStyle('physical');
+if (currentStep === 2) {
+addBotMessage("生年月日（または年齢）を教えてください。");
+updateStepIndicator(stepLabel("年齢の確認"));
+renderBirthdateControl(false);
+} else if (currentStep === 3) {
+addBotMessage("体格の目安（身長・体重）と、妊娠・授乳の有無について教えてください。");
+updateStepIndicator(stepLabel("体格・身体情報の確認"));
+renderBodyMetricsControl();
+} else if (currentStep === 4) {
+addBotMessage("一番気になっている**症状や、けがの場所、痛み**を教えてください。（複数選択可）");
+updateStepIndicator(stepLabel("症状・不調部位の確認"));
+renderSymptomControl();
+} else if (currentStep === 5) {
+addBotMessage("その症状やけがは、いつ頃から始まりましたか？");
+updateStepIndicator(stepLabel("発症時期の確認"));
+renderOnsetControl(false);
+} else if (currentStep === 6) {
+addBotMessage("つらさや痛みの程度をスライダーで選んでください（1〜10）。");
+updateStepIndicator(stepLabel("つらさレベルの確認"));
+renderSeverityControl(false);
+} else if (currentStep === 7) {
+addBotMessage("💊 **安全チェック**です。\n現在**服用している薬**（市販薬含む）や、薬・食品の**アレルギー**、持病はありますか？");
+updateStepIndicator(stepLabel("服用薬・アレルギー確認"));
+renderSafetyHistoryControl();
+} else if (currentStep === 8) {
+addBotMessage("部活動や競技の公式大会など、**アンチ・ドーピング**（使用禁止薬物）の確認が必要ですか？");
+updateStepIndicator(stepLabel("アンチ・ドーピング確認"));
+renderDopingControl();
+} else if (currentStep === 9) {
+addBotMessage("保健室やドラッグストアで特に希望する配慮・対応があれば教えてください。");
+updateStepIndicator(stepLabel("配慮事項の確認"));
+renderExpectationsControl(false);
+} else if (currentStep === 10) {
+addBotMessage("最後に、カードを見せる相手へ**伝えたいひとことメッセージ**があればご記入ください。");
+updateStepIndicator(stepLabel("最終メッセージの入力"));
+renderFinalNotesControl(false);
+} else if (currentStep === 11) {
+askDestination(false);
+}
+}
+
+
+// ============================================================
+// 心の相談モード
+// ============================================================
+function askMentalQuestions() {
+setThemeStyle('mental');
+if (currentStep === 1) {
+addBotMessage("【ステップ①：安全確認】\n今、あなたの身の安全は確保できていますか？自傷の危険や、緊急で助けが必要な状況ではないことを確認します。");
+updateStepIndicator(stepLabel("① 安全確認"));
+setControls(`
+<div class="space-y-2">
+<div class="bg-purple-50 border border-purple-200 p-2 rounded-xl text-[11px] text-purple-950">
+🛡️ まず今の状態を確認させてください
+</div>
+<div class="grid grid-cols-1 gap-1.5">
+<button type="button" onclick="handleMentalSafety(false)" class="py-2.5 px-3 bg-purple-900 hover:bg-purple-950 text-white font-bold rounded-xl text-xs active:scale-98 shadow-sm text-left flex items-center justify-between gap-2">
+<span>今すぐ命の危険はありません（気持ちを整理する）</span>
+<span>→</span>
+</button>
+<button type="button" onclick="handleMentalSafety(true)" class="py-2.5 px-3 bg-rose-700 hover:bg-rose-800 text-white font-bold rounded-xl text-xs active:scale-98 shadow-sm text-left flex items-center justify-between gap-2">
+<span>⚠️ 自分を傷つけそう・緊急の助けが必要</span>
+<span>🚨</span>
+</button>
+</div>
+</div>
+`);
+} else if (currentStep === 2) {
+addBotMessage("【ステップ②：気持ちの整理】\n言葉にしにくい今の感情や気分の状態を、当てはまるものから選んでみてください。（複数選択可）");
+updateStepIndicator(stepLabel("② 気持ちの整理"));
+const feelings = [
+['😰 不安・緊張が強い', '😰 不安・緊張が強い'],
+['😢 わけもなく悲しい・涙が出る', '😢 悲しい・涙が出る'],
+['🥱 疲れ切っている・力が出ない', '🥱 疲れ切っている'],
+['🌀 イライラする・モヤモヤする', '🌀 イライラ・モヤモヤ'],
+['😶 何も感じない・無気力', '😶 何も感じない'],
+['💬 誰かに聞いてほしい', '💬 話を聞いてほしい']
+];
+setControls(`
+<div class="space-y-2">
+<div class="grid grid-cols-2 gap-1.5 max-h-[180px] overflow-y-auto p-1 bg-purple-50/50 border border-purple-200 rounded-xl">
+${feelings.map(([value, label]) => `
+<label class="flex items-center gap-1.5 p-2 bg-white rounded-lg border border-purple-100 text-[11px] font-bold text-purple-950 cursor-pointer min-w-0">
+<input type="checkbox" name="mental_feel" value="${esc(value)}" class="accent-purple-700 rounded w-4 h-4 flex-shrink-0">
+<span>${esc(label)}</span>
+</label>`).join('')}
+</div>
+<div class="flex gap-1.5">
+<input type="text" id="customFeelInput" maxlength="${MAXLEN_SHORT}" placeholder="その他の感情（自由記入）" class="flex-1 min-w-0 px-2.5 py-1.5 text-xs border border-purple-200 rounded-xl outline-none focus:border-purple-600 bg-white">
+<button type="button" data-primary onclick="submitMentalFeeling()" class="bg-purple-800 hover:bg-purple-900 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-sm whitespace-nowrap active:scale-95">次へ</button>
+</div>
+</div>
+`);
+} else if (currentStep === 3) {
+addBotMessage("【ステップ③：期間の確認】\nそのつらい気持ちやモヤモヤは、いつ頃から続いていますか？");
+updateStepIndicator(stepLabel("③ 期間の確認"));
+renderOnsetControl(true);
+} else if (currentStep === 4) {
+addBotMessage("【ステップ④：生活への影響】\n困っている生活への影響（学校、勉強、睡眠、食事など）を教えてください。（複数選択可）");
+updateStepIndicator(stepLabel("④ 生活への影響"));
+const impacts = [
+['💤 夜寝られない・朝起きられない', '💤 睡眠に響いている'],
+['🏫 学校に行きづらい・休みたい', '🏫 学校へ行きづらい'],
+['✏️ 勉強や作業に集中できない', '✏️ 集中できない'],
+['🍚 食欲がない・食べ過ぎる', '🍚 食生活の不調']
+];
+setControls(`
+<div class="space-y-2">
+<div class="grid grid-cols-2 gap-1.5 max-h-[160px] overflow-y-auto p-1 bg-purple-50/50 border border-purple-200 rounded-xl">
+${impacts.map(([value, label]) => `
+<label class="flex items-center gap-1.5 p-1.5 bg-white rounded-lg border border-purple-100 text-[11px] font-bold text-purple-950 cursor-pointer min-w-0">
+<input type="checkbox" name="mental_impact" value="${esc(value)}" class="accent-purple-700 rounded w-4 h-4 flex-shrink-0">
+<span>${esc(label)}</span>
+</label>`).join('')}
+</div>
+<div class="flex gap-1.5">
+<input type="text" id="customImpactInput" maxlength="${MAXLEN_SHORT}" placeholder="その他の生活の困りごと" class="flex-1 min-w-0 px-2.5 py-1.5 text-xs border border-purple-200 rounded-xl outline-none focus:border-purple-600 bg-white">
+<button type="button" data-primary onclick="submitMentalImpact()" class="bg-purple-800 hover:bg-purple-900 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-sm whitespace-nowrap active:scale-95">次へ</button>
+</div>
+</div>
+`);
+} else if (currentStep === 5) {
+addBotMessage("【ステップ⑤：必要な助け】\n周りの大人（保護者、先生、カウンセラー等）に一番してほしい対応を選んでみましょう。");
+updateStepIndicator(stepLabel("⑤ 必要な助け"));
+renderExpectationsControl(true);
+} else if (currentStep === 6) {
+addBotMessage("【ステップ⑥：相談メモの作成】\n最後に、カードを見せる相手へ伝えたいこと（または一言メモ）を入力してください。");
+updateStepIndicator(stepLabel("⑥ 最終メモ"));
+renderFinalNotesControl(true);
+} else if (currentStep === 7) {
+askDestination(true);
+}
+}
+
+
+function handleMentalSafety(isEmergency) {
+if (isBusy) return;
+saveStepState();
+if (isEmergency) {
+addUserMessage("⚠️ 自傷の恐れ・緊急の相談要請あり");
+showMentalCrisis();
+} else {
+addUserMessage("今すぐ命の危険はありません（気持ちの整理へ進む）");
+currentStep = 2;
+askMentalQuestions();
+}
+}
+
+
+function submitMentalFeeling() {
+if (isBusy) return;
+const chips = [...document.querySelectorAll('input[name="mental_feel"]:checked')].map(b => b.value);
+const custom = clip(document.getElementById('customFeelInput')?.value, MAXLEN_SHORT);
+if (guardFreeText(custom)) return;
+saveStepState();
+const list = chips.slice();
+if (custom) list.push(custom);
+if (list.length === 0) list.push("ことばにしづらいモヤモヤ・不調");
+state.feelingChips = chips;
+state.symptom = list.join('、');
+addUserMessage("・感情/状態: " + state.symptom);
+currentStep = 3;
+askMentalQuestions();
+}
+
+
+function submitMentalImpact() {
+if (isBusy) return;
+const chips = [...document.querySelectorAll('input[name="mental_impact"]:checked')].map(b => b.value);
+const custom = clip(document.getElementById('customImpactInput')?.value, MAXLEN_SHORT);
+if (guardFreeText(custom)) return;
+saveStepState();
+const list = chips.slice();
+if (custom) list.push(custom);
+if (list.length === 0) list.push("特になし（日常生活への大きな支障は未申告）");
+state.impactChips = chips;
+state.impact = list.join('、');
+addUserMessage("・生活への影響: " + state.impact);
+currentStep = 5;
+askMentalQuestions();
+}
+
+
+// ============================================================
+// 入力コントロール
+// ============================================================
+function todayISO() {
+const d = new Date();
+const pad = n => String(n).padStart(2, '0');
+return `d.getFullYear()-{pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+
+function renderBirthdateControl(isMental = false) {
+setControls(`
+<div class="space-y-2">
+<div class="flex gap-2 items-center">
+<input type="date" id="birthdateInput" min="1900-01-01" max="${todayISO()}" aria-label="生年月日" class="flex-1 min-w-0 px-3 py-2 text-xs border border-slate-300 rounded-xl outline-none focus:border-teal-600 bg-white shadow-sm">
+<button type="button" data-primary onclick="submitBirthdate(${isMental})" class="bg-teal-700 hover:bg-teal-800 text-white px-4 py-2 rounded-xl text-xs font-bold transition shadow-sm active:scale-95 whitespace-nowrap">決定</button>
+</div>
+<div class="flex items-center gap-2 text-[11px] text-slate-600 font-bold">
+<span class="whitespace-nowrap">または年齢のみ:</span>
+<input type="number" id="ageInput" min="0" max="120" step="1" inputmode="numeric" placeholder="例：15" aria-label="年齢" class="w-24 px-2.5 py-1.5 text-xs border border-slate-300 rounded-xl outline-none focus:border-teal-600 bg-white">
+<span>歳</span>
+</div>
+</div>
+`);
+}
+
+
+function submitBirthdate(isMental = false) {
+if (isBusy) return;
+const dateInput = document.getElementById('birthdateInput');
+const ageInput = document.getElementById('ageInput');
+const dateValue = dateInput ? dateInput.value : '';
+const ageValue = ageInput ? ageInput.value.trim() : '';
+
+
+let age = null;
+let label = '';
+let birthdate = '';
+if (dateValue) {
+age = calculateAge(dateValue);
+if (age === null || age < 0 || age > 120) {
+showInlineError('正しい生年月日を選択してください（未来の日付は選べません）。');
+return;
+}
+birthdate = dateValue;
+label = `dateValue（{age}歳）`;
+} else if (ageValue !== '') {
+const n = Number(ageValue);
+if (!Number.isInteger(n) || n < 0 || n > 120) {
+showInlineError('年齢は0〜120の整数で入力してください。');
+return;
+}
+age = n;
+label = `${age}歳`;
+} else {
+showInlineError('生年月日を選択するか、年齢を入力してください。');
+return;
+}
+
+
+saveStepState();
+state.birthdate = birthdate;
+state.calculatedAge = age;
+state.ageGroup = age < 15 ? `age歳(15歳未満)`:`{age}歳 (15歳以上)`;
+addUserMessage(label);
+currentStep++;
+if (isMental) askMentalQuestions(); else askPhysicalStep();
+}
+
+
+function renderBodyMetricsControl() {
+setControls(`
+<div class="space-y-2">
+<div class="grid grid-cols-2 gap-2">
+<div class="bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+<label for="heightInput" class="text-[10px] text-slate-500 font-bold block mb-0.5 text-center" style="min-height:0">身長（cm）</label>
+<input type="number" id="heightInput" min="40" max="220" step="1" inputmode="numeric" placeholder="例：155" class="w-full bg-white border border-slate-300 rounded-lg p-1.5 text-xs font-bold text-teal-800 text-center outline-none focus:border-teal-600">
+</div>
+<div class="bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+<label for="weightInput" class="text-[10px] text-slate-500 font-bold block mb-0.5 text-center" style="min-height:0">体重（kg）</label>
+<input type="number" id="weightInput" min="2" max="200" step="0.1" inputmode="decimal" placeholder="例：45" class="w-full bg-white border border-slate-300 rounded-lg p-1.5 text-xs font-bold text-teal-800 text-center outline-none focus:border-teal-600">
+</div>
+</div>
+<label class="plain flex items-center gap-2 text-[11px] text-slate-600 font-bold px-1 cursor-pointer">
+<input type="checkbox" name="body_skip" value="skip" class="accent-teal-700 w-4 h-4 flex-shrink-0">
+<span>身長・体重は答えない（わからない）</span>
+</label>
+<div class="bg-slate-50 p-1.5 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-1.5 text-xs font-bold">
+<label for="pregnancySelect" class="text-slate-600 text-[11px]" style="min-height:0">妊娠・授乳（※市販薬の成分確認）</label>
+<select id="pregnancySelect" class="bg-white border border-slate-300 rounded-lg p-1.5 text-xs font-bold text-teal-800 outline-none max-w-full">
+<option value="いいえ">いいえ / 該当しない</option>
+<option value="あり・可能性あり">あり / 可能性あり</option>
+<option value="わからない">わからない</option>
+<option value="授乳中">授乳中</option>
+</select>
+</div>
+<button type="button" data-primary onclick="submitBodyMetrics()" class="w-full py-2 bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold rounded-xl shadow-sm transition active:scale-98">決定して進む</button>
+</div>
+`);
+}
+
+
+function submitBodyMetrics() {
+if (isBusy) return;
+const h = document.getElementById('heightInput');
+const w = document.getElementById('weightInput');
+const p = document.getElementById('pregnancySelect');
+const skip = document.querySelector('input[name="body_skip"]')?.checked;
+if (!h || !w || !p) return;
+let height = '', weight = '';
+if (!skip) {
+const hv = h.value.trim(), wv = w.value.trim();
+if (hv === '' && wv === '') {
+showInlineError('身長と体重を入力するか、「答えない」にチェックしてください。');
+return;
+}
+if (hv !== '') {
+const n = Number(hv);
+if (!Number.isFinite(n) || n < 40 || n > 220) { showInlineError('身長は40〜220cmの数字で入力してください。'); return; }
+height = String(Math.round(n));
+}
+if (wv !== '') {
+const n = Number(wv);
+if (!Number.isFinite(n) || n < 2 || n > 200) { showInlineError('体重は2〜200kgの数字で入力してください。'); return; }
+weight = String(Math.round(n * 10) / 10);
+}
+}
+saveStepState();
+state.height = height;
+state.weight = weight;
+state.pregnancy = p.value || 'いいえ';
+const hText = state.height ? `${state.height}cm` : '未回答';
+const wText = state.weight ? `${state.weight}kg` : '未回答';
+addUserMessage(`身長: ${hText} / 体重: ${wText} / 妊娠・授乳: ${state.pregnancy}`);
+currentStep++;
+askPhysicalStep();
+}
+
+
+function renderSymptomControl() {
+const icons = { '頭痛・めまい': '🤕 頭痛・めまい', '腹痛・胃痛': '😣 腹痛・胃痛', '発熱・寒気・のど痛': '😷 発熱・のど痛', '鼻水・鼻づまり・くしゃみ': '🤧 鼻水・くしゃみ', '吐き気・下痢': '🤢 吐き気・下痢', '生理痛': '🌸 生理痛', 'かゆみ・湿疹・虫刺され': '🦟 かゆみ・虫刺され', '擦り傷・切り傷': '🩹 擦り傷・切り傷', '打撲・捻挫・痛む箇所': '🦴 打撲・捻挫', 'やけど（火傷）': '🔥 やけど' };
+setControls(`
+<div class="space-y-2">
+<div class="grid grid-cols-2 gap-1.5 max-h-[220px] overflow-y-auto p-1 bg-slate-50 border border-slate-200 rounded-xl">
+${SYMPTOM_OPTIONS.map(value => `
+<label class="flex items-center gap-1.5 p-1.5 bg-white rounded-lg border border-slate-200 text-[11px] font-medium text-slate-700 cursor-pointer min-w-0">
+<input type="checkbox" name="symptom_chip" value="${esc(value)}" class="accent-teal-700 rounded w-4 h-4 flex-shrink-0">
+<span>${esc(icons[value])}</span>
+</label>`).join('')}
+</div>
+<div class="flex gap-1.5">
+<input type="text" id="customSymptomInput" maxlength="${MAXLEN_SHORT}" placeholder="詳細（例：右足首の激痛）" class="flex-1 min-w-0 px-2.5 py-1.5 text-xs border border-slate-300 rounded-xl outline-none focus:border-teal-600 bg-white">
+<button type="button" data-primary onclick="submitMultipleSymptoms()" class="bg-teal-700 hover:bg-teal-800 text-white px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-sm whitespace-nowrap active:scale-95">確定</button>
+</div>
+</div>
+`);
+}
+
+
+function submitMultipleSymptoms() {
+if (isBusy) return;
+const chips = [...document.querySelectorAll('input[name="symptom_chip"]:checked')].map(b => b.value);
+const custom = clip(document.getElementById('customSymptomInput')?.value, MAXLEN_SHORT);
+const list = chips.slice();
+if (custom) list.push(custom);
+
+
+if (list.length === 0) {
+showInlineError('症状を選択するか入力してください。');
+return;
+}
+if (guardFreeText(custom)) return;
+saveStepState();
+state.symptomChips = chips;
+state.symptom = list.join('、');
+addUserMessage(state.symptom);
+currentStep++;
+askPhysicalStep();
+}
+
+
+function renderOnsetControl(isMental = false) {
+setThemeStyle(isMental ? 'mental' : 'physical');
+const btnClass = isMental
+? "bg-purple-50 hover:bg-purple-100 text-purple-950 border-purple-200"
+: "bg-teal-50 hover:bg-teal-100 text-teal-800 border-teal-200";
+const mainBtnClass = isMental
+? "bg-purple-800 hover:bg-purple-900"
+: "bg-teal-700 hover:bg-teal-800";
+const borderFocus = isMental ? "focus:border-purple-600" : "focus:border-teal-600";
+const labels = ['🏃 今日・さっきから', '🌙 昨日の夜から', '🗓️ 数日前から', '⏳ 1週間以上前から'];
+
+
+setControls(`
+<div class="space-y-2">
+<div class="grid grid-cols-2 gap-1.5">
+${ONSET_OPTIONS.map((value, i) => `
+<button type="button" onclick="handleOptionSelect('onset', '${value}', ${isMental})" class="py-2 px-1.5 btnClasstext-[11px]font-boldrounded-lgborder">{esc(labels[i])}</button>`).join('')}
+</div>
+<div class="flex gap-1.5">
+<input type="text" id="customOnset" maxlength="${MAXLEN_SHORT}" placeholder="自由入力（例：テスト前日頃から）" class="flex-1 min-w-0 px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg outline-none ${borderFocus}">
+<button type="button" data-primary onclick="submitCustomText('onset', 'customOnset', isMental)"class="{mainBtnClass} text-white px-3 py-1.5 rounded-lg text-xs font-bold active:scale-95 whitespace-nowrap">決定</button>
+</div>
+</div>
+`);
+}
+
+
+function severityText(value, withEmoji = true) {
+const n = parseInt(value, 10);
+const levels = [
+[2, '😊', '少し気になる程度'],
+[4, '🙂', '気になるが普段どおり過ごせる'],
+[6, '😣', 'つらい・集中しにくい'],
+[8, '😖', 'かなりつらい・横になりたい'],
+[10, '😫', 'がまんできないほどつらい']
+];
+const hit = levels.find(([max]) => n <= max) || levels[levels.length - 1];
+return withEmoji ? `${hit[1]} ${hit[2]}` : hit[2];
+}
+
+
+function updateSeverityLabel(value) {
+const v = document.getElementById('sevVal');
+const l = document.getElementById('sevLabel');
+if (v) v.innerText = value;
+if (l) l.innerText = severityText(value);
+}
+
+
+function renderSeverityControl(isMental = false) {
+setThemeStyle(isMental ? 'mental' : 'physical');
+setControls(`
+<div class="space-y-2.5 bg-teal-50/50 p-2.5 rounded-2xl border border-teal-100">
+<div id="sevLabel" class="text-center text-sm font-bold text-teal-900" aria-live="polite">${severityText(5)}</div>
+<div class="flex items-center gap-2">
+<span class="text-[10px] font-bold text-slate-500 whitespace-nowrap">1 軽い</span>
+<input type="range" id="severityRange" min="1" max="10" value="5" aria-label="つらさの程度" class="flex-1 accent-teal-700 h-2 bg-slate-200 rounded-lg cursor-pointer" oninput="updateSeverityLabel(this.value)">
+<span class="text-xs font-bold text-teal-800 bg-white px-2 py-0.5 rounded-md border border-teal-200 whitespace-nowrap"><span id="sevVal">5</span>/10</span>
+</div>
+<button type="button" onclick="submitSeverity(${isMental})" class="w-full py-2 bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold rounded-xl shadow-sm active:scale-98">決定</button>
+</div>
+`);
+}
+
+
+function submitSeverity(isMental = false) {
+if (isBusy) return;
+const range = document.getElementById('severityRange');
+const n = range ? parseInt(range.value, 10) : NaN;
+if (!Number.isInteger(n) || n < 1 || n > 10) {
+showInlineError('1〜10の範囲で選んでください。');
+return;
+}
+handleOptionSelect('severity', String(n), isMental);
+}
+
+
+function renderSafetyHistoryControl() {
+setThemeStyle('physical');
+setControls(`
+<div class="space-y-2">
+<div class="bg-slate-50 p-2 rounded-xl border border-slate-200 space-y-1.5">
+<input type="text" id="currentMedsInput" maxlength="${MAXLEN_SHORT}" placeholder="1. 現在服用中の薬（例：抗ヒスタミン薬など）" aria-label="現在服用中の薬" class="w-full p-2 text-xs border border-slate-300 rounded-lg outline-none focus:border-teal-600 bg-white">
+<input type="text" id="allergiesInput" maxlength="${MAXLEN_SHORT}" placeholder="2. アレルギー（例：湿布かぶれ、卵など）" aria-label="アレルギー" class="w-full p-2 text-xs border border-slate-300 rounded-lg outline-none focus:border-teal-600 bg-white">
+<input type="text" id="historyInput" maxlength="${MAXLEN_SHORT}" placeholder="3. 持病・過去の副作用（例：喘息、胃潰瘍など）" aria-label="持病・過去の副作用" class="w-full p-2 text-xs border border-slate-300 rounded-lg outline-none focus:border-teal-600 bg-white">
+</div>
+<div class="flex gap-1.5">
+<button type="button" onclick="submitSafetyHistoryNone()" class="w-1/3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl border border-slate-300 active:scale-95">
+特になし
+</button>
+<button type="button" data-primary onclick="submitSafetyHistory()" class="w-2/3 py-2 bg-teal-700 hover:bg-teal-800 text-white text-xs font-bold rounded-xl shadow-sm active:scale-98">
+確認して決定
+</button>
+</div>
+</div>
+`);
+}
+
+
+function submitSafetyHistoryNone() {
+if (isBusy) return;
+saveStepState();
+state.currentMeds = 'なし';
+state.allergies = 'なし';
+state.history = 'なし';
+addUserMessage('・服用薬: なし\n・アレルギー: なし\n・持病・副作用歴: なし');
+currentStep++;
+askPhysicalStep();
+}
+
+
+function submitSafetyHistory() {
+if (isBusy) return;
+const meds = clip(document.getElementById('currentMedsInput')?.value, MAXLEN_SHORT);
+const allergies = clip(document.getElementById('allergiesInput')?.value, MAXLEN_SHORT);
+const history = clip(document.getElementById('historyInput')?.value, MAXLEN_SHORT);
+if (guardFreeText([meds, allergies, history].filter(Boolean).join(' / '))) return;
+saveStepState();
+state.currentMeds = isNone(meds) ? 'なし' : meds;
+state.allergies = isNone(allergies) ? 'なし' : allergies;
+state.history = isNone(history) ? 'なし' : history;
+
+
+addUserMessage(`・服用薬: ${state.currentMeds}\n・アレルギー: ${state.allergies}\n・持病・副作用歴: ${state.history}`);
+currentStep++;
+askPhysicalStep();
+}
+
+
+function renderDopingControl() {
+setThemeStyle('physical');
+setControls(`
+<div class="space-y-1.5">
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+<button type="button" onclick="handleOptionSelect('doping', 'なし（特になし）')" class="py-2 px-2.5 bg-teal-50 hover:bg-teal-100 text-teal-800 text-[11px] font-bold rounded-xl border border-teal-200 text-left active:scale-98">
+✅ なし（特に考慮不要）
+</button>
+<button type="button" onclick="handleOptionSelect('doping', 'あり（公式大会・部活等でドーピング考慮が必要）')" class="py-2 px-2.5 bg-amber-50 hover:bg-amber-100 text-amber-900 text-[11px] font-bold rounded-xl border border-amber-200 text-left active:scale-98">
+🏅 あり（大会出場・ドーピング確認が必要）
+</button>
+</div>
+<div class="flex gap-1.5 pt-0.5">
+<input type="text" id="customDoping" maxlength="${MAXLEN_SHORT}" placeholder="詳細メモ（例：来週陸上の県大会あり）" class="flex-1 min-w-0 px-2.5 py-1.5 text-xs border border-slate-300 rounded-xl outline-none focus:border-teal-600">
+<button type="button" data-primary onclick="submitDopingMemo()" class="bg-teal-700 text-white px-3 py-1.5 rounded-xl text-xs font-bold active:scale-95 whitespace-nowrap">決定</button>
+</div>
+</div>
+`);
+}
+
+
+// 詳細メモが書かれた場合は「ドーピング確認あり」として扱う（警告の出し漏れ防止）
+function submitDopingMemo() {
+if (isBusy) return;
+const memo = clip(document.getElementById('customDoping')?.value, MAXLEN_SHORT);
+if (!memo) {
+showInlineError('メモを入力するか、上のボタンから選んでください。');
+return;
+}
+if (guardFreeText(memo)) return;
+const value = isNone(memo) ? 'なし（特になし）' : `あり（${memo}）`;
+handleOptionSelect('doping', value);
+}
+
+
+function renderExpectationsControl(isMental = false) {
+setThemeStyle(isMental ? 'mental' : 'physical');
+const mainBtnClass = isMental ? "bg-purple-800 hover:bg-purple-900" : "bg-teal-700 hover:bg-teal-800";
+const borderFocus = isMental ? "focus:border-purple-600" : "focus:border-teal-600";
+const placeholder = isMental
+? '例：話をゆっくり聞いてほしい、しばらく見守ってほしい等'
+: '例：体育・部活を見学したい、静かな部屋で休みたい等';
+
+
+setControls(`
+<div class="space-y-1.5">
+<input type="text" id="expectInput" maxlength="MAXLENSHORT"placeholder="{esc(placeholder)}" class="w-full p-2 text-xs border border-slate-300 rounded-xl outline-none ${borderFocus} bg-white">
+<div class="flex gap-1.5">
+<button type="button" onclick="submitCustomText('expectations', 'expectInput', ${isMental}, '特になし')" class="w-1/3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl border border-slate-300 active:scale-95">
+特になし
+</button>
+<button type="button" data-primary onclick="submitCustomText('expectations', 'expectInput', ${isMental})" class="w-2/3 py-2 ${mainBtnClass} text-white text-xs font-bold rounded-xl shadow-sm active:scale-98">
+入力内容で決定
+</button>
+</div>
+</div>
+`);
+}
+
+
+function renderFinalNotesControl(isMental = false) {
+setThemeStyle(isMental ? 'mental' : 'physical');
+const mainBtnClass = isMental ? "bg-purple-800 hover:bg-purple-900" : "bg-teal-700 hover:bg-teal-800";
+const borderFocus = isMental ? "focus:border-purple-600" : "focus:border-teal-600";
+
+
+setControls(`
+<div class="space-y-2">
+<textarea id="finalNotesInput" rows="3" maxlength="MAXLENLONG"placeholder="相手へ伝えたいこと（空欄でも可・{MAXLEN_LONG}文字まで）" class="w-full p-2 text-xs border border-slate-300 rounded-xl outline-none ${borderFocus} bg-white resize-none"></textarea>
+<div class="flex gap-1.5">
+<button type="button" onclick="submitCustomText('finalNotes', 'finalNotesInput', ${isMental}, '特になし')" class="w-1/3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl border border-slate-300 active:scale-95">
+特になし
+</button>
+<button type="button" onclick="submitCustomText('finalNotes', 'finalNotesInput', ${isMental})" class="w-2/3 py-2 ${mainBtnClass} text-white text-xs font-bold rounded-xl shadow-sm active:scale-98">
+次へ（宛先を選ぶ）
+</button>
+</div>
+</div>
+`);
+}
+
+
+function handleOptionSelect(key, val, isMental = false) {
+if (isBusy) return;
+saveStepState();
+state[key] = val;
+addUserMessage(key === 'severity' ? `つらさ: val/10（{severityText(val, false)}）` : val);
+currentStep++;
+if (isMental || isMentalMode()) {
+askMentalQuestions();
+} else {
+askPhysicalStep();
+}
+}
+
+
+// forcedValue: 「特になし」ボタンなど、入力欄に関係なく値を決める場合
+function submitCustomText(key, inputId, isMental = false, forcedValue) {
+if (isBusy) return;
+const input = document.getElementById(inputId);
+const max = key === 'finalNotes' ? MAXLEN_LONG : MAXLEN_SHORT;
+let val;
+if (typeof forcedValue === 'string') {
+val = forcedValue;
+} else {
+val = clip(input ? input.value : '', max);
+if (key === 'onset' && !val) {
+showInlineError('時期を選ぶか、自由入力欄に入力してください。');
+return;
+}
+if (!val) val = '特になし';
+if (guardFreeText(val)) return;
+}
+saveStepState();
+state[key] = val;
+addUserMessage(val);
+currentStep++;
+if (isMental || isMentalMode()) {
+askMentalQuestions();
+} else {
+askPhysicalStep();
+}
+}
+
+
+function askDestination(isMental = false) {
+const isMentalModeNow = isMental || isMentalMode();
+setThemeStyle(isMentalModeNow ? 'mental' : 'physical');
+addBotMessage("ご回答ありがとうございました！\n完成した**「KOTOHANA相談カード」**を誰に見せますか？");
+updateStepIndicator(stepLabel("カード宛先の選択"));
+
+
+const dests = isMentalModeNow
+? [['保護者の方へ', '👨‍👩‍👦 保護者の方へ'], ['学校の先生・スクールカウンセラーへ', '🏫 学校の先生・スクールカウンセラーへ'], ['保健室の先生へ', '🏥 保健室の先生へ']]
+: [['ドラッグストアの薬剤師・登録販売者様へ', '💊 ドラッグストアの薬剤師・登録販売者様へ'], ['保護者の方へ', '👨‍👩‍👦 保護者の方へ'], ['学校の保健室の先生へ', '🏫 学校の保健室の先生へ']];
+const cls = isMentalModeNow
+? 'bg-purple-50 hover:bg-purple-100 text-purple-950 border-purple-200'
+: 'bg-teal-50 hover:bg-teal-100 text-teal-800 border-teal-200';
+
+
+setControls(`
+<div class="flex flex-col gap-2">
+${dests.map(([value, label]) => `
+<button type="button" onclick="selectDestination('${value}')" class="py-2.5 px-3.5 clsfont-boldrounded-xltext-xsbordertext-lefttransitionflexitems-centergap-2"><span>{esc(label)}</span></button>`).join('')}
+</div>
+`);
+}
+
+
+const ALLOWED_DESTINATIONS = ['ドラッグストアの薬剤師・登録販売者様へ', '保護者の方へ', '学校の保健室の先生へ', '学校の先生・スクールカウンセラーへ', '保健室の先生へ'];
+
+
+function selectDestination(dest) {
+if (isBusy) return; // 連打・二重生成の防止
+if (!ALLOWED_DESTINATIONS.includes(dest)) return;
+saveStepState();
+state.destination = dest;
+if (!state.finalNotes || state.finalNotes === '特になし') {
+if (dest.includes('薬剤師')) {
+state.finalNotes = '店頭で言葉でうまく説明するのが少し苦手なためカードを作成しました。体調・年齢に合う市販薬のご確認をお願いいたします。';
+} else {
+state.finalNotes = '自分の体調や気持ちを直接話すのが難しかったためカードに書きました。無理のない形で相談に乗ってもらえると嬉しいです。';
+}
+}
+addUserMessage(`${dest}`);
+currentStep = isMentalMode() ? 8 : 12;
+generatePDFCard();
+}
+
+
+// ============================================================
+// 市販薬の安全チェック（AIを使わずルールのみで判定）
+// ============================================================
+function getDrugRecommendations(symptomText, age, historyText, dopingText, currentMeds, allergies, pregnancy) {
+const symptom = String(symptomText || '');
+const history = String(historyText || '');
+const doping = String(dopingText || '');
+const ageNum = Number.isInteger(Number(age)) && String(age) !== '' ? Number(age) : null;
+const severity = parseInt(state.severity, 10) || 0;
+const onset = String(state.onset || '');
+
+
+const warnings = [];
+const referral = [];
+
+
+if (ageNum === null) {
+warnings.push("⚠️ 年齢未確認：市販薬は年齢で使える製品が異なります。店頭で年齢をお伝えください");
+} else if (ageNum < 15) {
+if (ageNum < 3) warnings.push(`⚠️ ${ageNum}歳（乳幼児）：市販薬で様子を見るより、医師の診察を優先してください（特に1歳未満）`);
+warnings.push(`⚠️ ${ageNum}歳（15歳未満）：市販のロキソプロフェン・イブプロフェン製剤の多くは15歳未満は使えません。アスピリン等のサリチル酸系解熱鎮痛薬は、15歳未満ではライ症候群との関連から避けるべきとされています。年齢に合う製品を薬剤師にご確認ください`);
+}
+if (pregnancy && (pregnancy.includes('あり') || pregnancy.includes('わからない'))) {
+warnings.push("⚠️ 妊娠の可能性：解熱鎮痛薬（特にイブプロフェン・ロキソプロフェン等のNSAIDs）を含め、自己判断での服用は避け、必ず医師・薬剤師にご相談ください");
+}
+if (pregnancy === '授乳中') {
+warnings.push("⚠️ 授乳中：成分によっては母乳に移行するものがあります。授乳中であることを薬剤師にお伝えください");
+}
+if (/喘息|ぜんそく/.test(history)) {
+warnings.push("⚠️ 喘息の既往：解熱鎮痛薬で喘息発作（アスピリン喘息）が起こることがあります。必ず薬剤師にお伝えください");
+}
+if (/胃潰瘍|十二指腸潰瘍|潰瘍|胃炎/.test(history)) {
+warnings.push("⚠️ 胃の病気の既往：NSAIDs（解熱鎮痛薬）は胃への負担があります。薬剤師にご相談ください");
+}
+if (/腎|肝|心臓|心不全|高血圧|糖尿病|緑内障|前立腺/.test(history)) {
+warnings.push("⚠️ 持病あり：使えない市販薬がある可能性があります。持病名を薬剤師にお伝えください");
+}
+if (doping.includes('あり')) {
+warnings.push("🏅 アンチ・ドーピング：総合感冒薬や一部の漢方薬・鼻炎薬（エフェドリン類・マオウ等）には禁止物質が含まれることがあります。スポーツファーマシスト等の薬剤師にご確認ください");
+}
+if (!isNone(currentMeds)) {
+warnings.push(`💊 併用確認：現在服用中の「${currentMeds}」との重複成分・飲み合わせを店頭でご確認ください`);
+}
+if (!isNone(allergies)) {
+warnings.push(`⚠️ アレルギー確認：「${allergies}」に対する過敏症成分が含まれていないかご確認ください`);
+}
+
+
+if (warnings.length === 0) {
+warnings.push("✅ 入力内容からは特に追加の注意事項は見つかりませんでした。薬を使うかどうかは、店頭の薬剤師・登録販売者と一緒にご確認ください。");
+}
+
+
+// 受診の目安（ルールベース）
+if (severity >= 8) referral.push("つらさが強い（8以上）ため、市販薬で様子を見る前に医療機関の受診も検討してください");
+if (onset.includes('1週間以上')) referral.push("症状が1週間以上続いているため、医療機関の受診をおすすめします");
+if (symptom.includes('やけど')) referral.push("やけどが広い・水ぶくれがある・顔や手足の関節・陰部の場合は受診してください");
+if (symptom.includes('傷')) referral.push("傷が深い・汚れが取れない・出血が止まりにくい場合は受診してください");
+if (symptom.includes('打撲') || symptom.includes('捻挫')) referral.push("強い腫れ・変形・体重をかけられない場合は骨折の可能性もあるため受診してください");
+if (symptom.includes('発熱') && ageNum !== null && ageNum < 6) referral.push("小さな子どもの発熱は早めに医療機関へご相談ください");
+if (symptom.includes('吐き気') || symptom.includes('下痢')) referral.push("水分がとれない・便に血が混じる・強い腹痛や高熱がある場合は受診してください");
+if (symptom.includes('生理痛')) referral.push("いつもより極端に痛い・薬が効かない・毎回寝込むほどつらい場合は婦人科などへ相談してください");
+if (symptom.includes('かゆみ') || symptom.includes('虫刺され')) referral.push("全身に広がる・顔や唇が腫れる・息苦しさがある場合はすぐに受診してください");
+
+
+const categories = [];
+const addCat = c => { if (!categories.includes(c)) categories.push(c); };
+if (symptom.includes('頭痛') || symptom.includes('生理痛')) addCat("解熱鎮痛薬");
+if (symptom.includes('発熱') || symptom.includes('のど')) { addCat("解熱鎮痛薬"); addCat("総合感冒薬"); }
+if (symptom.includes('鼻水') || symptom.includes('くしゃみ')) addCat("鼻炎薬");
+if (symptom.includes('腹痛') || symptom.includes('胃')) addCat("胃腸薬");
+if (symptom.includes('吐き気') || symptom.includes('下痢')) addCat("整腸薬など（下痢止めは自己判断で使わず相談）");
+if (symptom.includes('かゆみ') || symptom.includes('虫刺され')) addCat("かゆみ止めの外用薬");
+if (symptom.includes('傷')) addCat("外用殺菌消毒薬 / 創傷被覆材");
+if (symptom.includes('捻挫') || symptom.includes('打撲')) addCat("外用消炎鎮痛薬（湿布など）");
+if (symptom.includes('やけど')) addCat("やけど用外用薬（まずは流水で冷やす）");
+const category = categories.length ? categories.join('、') : "症状に応じたOTC医薬品";
+
+
+return { category, warnings, referral };
+}
+
+
+// ============================================================
+// AI（ブラウザから Gemini API を直接呼び出す）
+// ============================================================
+// AIへ送るのは「選択肢として用意した値」と大まかな年齢区分だけ。
+// 生年月日・自由記入・服薬・アレルギー・メッセージは送信しない。
+function buildAdvicePayload() {
+const age = state.calculatedAge;
+const ageBand = age === '' || age === null || age === undefined ? '不明' : (Number(age) < 15 ? '15歳未満' : '15歳以上');
+const destKey = state.destination.includes('薬剤師') ? 'pharmacist'
+: state.destination.includes('保護者') ? 'parent'
+: state.destination.includes('カウンセラー') ? 'teacher'
+: 'school_nurse';
+const payload = {
+mode: isMentalMode() ? 'mental' : 'physical',
+destination: destKey,
+onset: ONSET_OPTIONS.includes(state.onset) ? state.onset : 'その他',
+ageBand
+};
+if (isMentalMode()) {
+payload.feelings = state.feelingChips.slice(0, 6);
+payload.impacts = state.impactChips.slice(0, 4);
+} else {
+payload.symptoms = state.symptomChips.slice(0, 6);
+payload.severity = parseInt(state.severity, 10) || null;
+}
+return payload;
+}
+
+
+// AIが使えないとき・不適切な応答のときに使う定型の助言（JavaScriptのみで作成）
+function buildFallbackAdvice() {
+if (isMentalMode()) {
+return "・全部うまく話せなくても大丈夫です。このカードを渡すだけでも気持ちは伝わります。\n・話しやすい時間や場所（放課後・保健室など）を相手と相談してみましょう。";
+}
+if (state.destination.includes('薬剤師')) {
+return "・一番つらい症状と、いつから続いているかを最初に伝えましょう。\n・服用中の薬・アレルギー欄を見せて、使える薬を薬剤師さんに確認してもらいましょう。";
+}
+if (state.destination.includes('保護者')) {
+return "・いつから・どのくらいつらいかを最初に伝えましょう。\n・受診が必要かどうか、一緒に考えてもらいましょう。";
+}
+return "・一番つらい部分と、つらさの程度を最初に伝えましょう。\n・休みたい・見学したいなどの希望も、このカードで伝えられます。";
+}
+
+
+const UNSAFE_ADVICE_PATTERN = /(診断|病名|疑いがあります|の可能性が高い|\d+\s*(mg|ｍｇ|ミリ|錠|カプセル|包)|服用して|飲んで|飲みましょう|処方|ロキソ|イブプロフェン|アセトアミノフェン|<|>|https?:)/i;
+
+
+function sanitizeAdvice(text) {
+if (typeof text !== 'string') return null;
+const lines = text.replace(/[*#`_]/g, '').split(/\r?\n/).map(l => l.trim()).filter(Boolean)
+.map(l => (l.startsWith('・') ? l : '・' + l.replace(/^[-•●]\s*/, '')).slice(0, 80))
+.slice(0, 2);
+const result = lines.join('\n');
+if (!result || UNSAFE_ADVICE_PATTERN.test(result)) return null;
+return result;
+}
+
+
+// ---- プロンプト（短く・必要な情報だけ） ----
+const ADVICE_SYSTEM_PROMPT =
+'相談カードに添える「伝え方のヒント」を書く。' +
+'病名の推測・診断・薬の名前・用量・治療法・服薬の指示は書かない。' +
+'日本語で「・」から始まる2行、各40字以内。前置き不要。';
+const ADVICE_DESTINATIONS = { pharmacist: '薬剤師', parent: '保護者', school_nurse: '保健室の先生', teacher: '先生・スクールカウンセラー' };
+const ADVICE_FEELINGS = ['😰 不安・緊張が強い', '😢 わけもなく悲しい・涙が出る', '🥱 疲れ切っている・力が出ない', '🌀 イライラする・モヤモヤする', '😶 何も感じない・無気力', '💬 誰かに聞いてほしい'];
+const ADVICE_IMPACTS = ['💤 夜寝られない・朝起きられない', '🏫 学校に行きづらい・休みたい', '✏️ 勉強や作業に集中できない', '🍚 食欲がない・食べ過ぎる'];
+
+
+// 用意した選択肢の値だけを残す（自由記入などが紛れ込んでも送信しない）
+function pickAllowed(list, allowed, max) {
+return Array.isArray(list) ? [...new Set(list.filter(v => allowed.includes(v)))].slice(0, max) : [];
+}
+
+
+function buildAdvicePrompt(p) {
+const dest = ADVICE_DESTINATIONS[p.destination] || '保健室の先生';
+const onset = ONSET_OPTIONS.includes(p.onset) ? p.onset : 'その他';
+const age = ['15歳未満', '15歳以上', '不明'].includes(p.ageBand) ? p.ageBand : '不明';
+const lines = [`宛先:dest`,`時期:{onset}`, `年齢:${age}`];
+if (p.mode === 'mental') {
+const feelings = pickAllowed(p.feelings, ADVICE_FEELINGS, 6).map(v => v.replace(/^\S+\s/, ''));
+const impacts = pickAllowed(p.impacts, ADVICE_IMPACTS, 4).map(v => v.replace(/^\S+\s/, ''));
+lines.unshift('種別:心の相談（やさしく安心できる口調で）');
+lines.push(`気持ち:${feelings.join(',') || '言葉にしづらい'}`);
+if (impacts.length) lines.push(`影響:${impacts.join(',')}`);
+} else {
+const symptoms = pickAllowed(p.symptoms, SYMPTOM_OPTIONS, 6);
+const sev = Number(p.severity);
+lines.unshift('種別:体調');
+lines.push(`症状:${symptoms.join(',') || '自由記述のみ'}`);
+if (Number.isInteger(sev) && sev >= 1 && sev <= 10) lines.push(`つらさ:${sev}/10`);
+}
+return lines.join('\n');
+}
+
+
+function hasGeminiKey() {
+return typeof GEMINI_API_KEY === 'string' && GEMINI_API_KEY.trim().length >= 10;
+}
+
+
+let geminiThinkingSupported = true;
+
+
+// Gemini を1回呼び出し、応答テキスト（思考部分を除く）を返す
+async function requestGemini(prompt, signal) {
+const send = withThinking => {
+const generationConfig = { maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS, candidateCount: 1 };
+// 思考トークンも出力上限を消費するため、短い回答では低くする
+// （Gemini 3.8 Flash は low / medium / high のみ対応。'minimal' はエラーになる）
+if (withThinking) generationConfig.thinkingConfig = { thinkingLevel: 'low' };
+return fetch(GEMINI_ENDPOINT + encodeURIComponent(GEMINI_MODEL) + ':generateContent', {
+method: 'POST',
+// キーはURLではなくヘッダーで送る（履歴やログにURLが残ってもキーが含まれない）
+headers: { 'Content-Type': 'application/json', 'x-goog-api-key': GEMINI_API_KEY.trim() },
+body: JSON.stringify({
+systemInstruction: { parts: [{ text: ADVICE_SYSTEM_PROMPT }] },
+contents: [{ role: 'user', parts: [{ text: prompt }] }],
+generationConfig
+}),
+signal,
+credentials: 'omit',
+referrerPolicy: 'no-referrer'
+});
+};
+
+
+let res = await send(geminiThinkingSupported);
+if (res.status === 400 && geminiThinkingSupported) {
+// モデルが thinkingLevel に対応していない場合だけ、一度だけ設定なしで再試行
+const errText = await res.text().catch(() => '');
+if (!/thinking/i.test(errText)) return null;
+geminiThinkingSupported = false;
+res = await send(false);
+}
+if (!res.ok) {
+console.warn('Gemini API error: HTTP', res.status); // 本文（キーや入力を含みうる）は出力しない
+return null;
+}
+const data = await res.json().catch(() => null);
+const candidate = data && Array.isArray(data.candidates) ? data.candidates[0] : null;
+// 安全フィルターで止まった・上限で途中切れになった応答は使わない
+if (!candidate || candidate.finishReason === 'SAFETY' || candidate.finishReason === 'MAX_TOKENS') return null;
+const parts = candidate.content && Array.isArray(candidate.content.parts) ? candidate.content.parts : [];
+return parts.filter(pt => !pt.thought && typeof pt.text === 'string').map(pt => pt.text).join('\n');
+}
+
+
+async function fetchGeminiAdvice(payload, token) {
+// APIキー未設定ならAIを使わず定型文で作成する
+if (!hasGeminiKey()) return null;
+
+
+const cacheKey = JSON.stringify(payload);
+if (adviceCache.has(cacheKey)) return adviceCache.get(cacheKey);
+
+
+const controller = new AbortController();
+currentAbort = controller;
+const timer = setTimeout(() => controller.abort(), ADVICE_TIMEOUT_MS);
+try {
+const text = await requestGemini(buildAdvicePrompt(payload), controller.signal);
+const advice = sanitizeAdvice(text);
+if (advice && token === flowToken) adviceCache.set(cacheKey, advice);
+return advice;
+} catch (err) {
+// 個人情報やキーを含めないよう、ログはエラー種別のみ
+console.warn('AI advice unavailable:', err && err.name);
+return null;
+} finally {
+clearTimeout(timer);
+if (currentAbort === controller) currentAbort = null;
+}
+}
+
+
+function showLoadingControls() {
+const mental = isMentalMode();
+const ring = mental ? 'border-purple-200 border-t-purple-700' : 'border-teal-200 border-t-teal-700';
+const text = mental ? 'text-purple-900' : 'text-teal-900';
+setControls(`
+<div class="flex flex-col items-center gap-2 py-4" role="status" aria-live="polite">
+<div class="kotohana-spinner w-8 h-8 border-4 ${ring} rounded-full"></div>
+<div class="text-xs font-bold ${text}">カードを作成しています…</div>
+<div id="loading-sub" class="text-[10px] text-slate-500 text-center px-2">通信状況により数秒〜15秒ほどかかる場合があります</div>
+<button type="button" id="cancel-generation-btn" disabled onclick="cancelCardGeneration()" class="mt-1 px-4 py-1.5 bg-white text-slate-600 font-bold rounded-xl text-[11px] border border-slate-300">キャンセルして戻る</button>
+</div>
+`);
+}
+
+
+function cancelCardGeneration() {
+if (!isBusy) return;
+if (currentAbort) { try { currentAbort.abort(); } catch (e) { /* noop */ } }
+setBusy(false);
+goBackStep();
+}
+
+
+// ============================================================
+// カード作成
+// ============================================================
+async function generatePDFCard() {
+const token = ++flowToken;
+setBusy(true);
+setThemeStyle(isMentalMode() ? 'mental' : 'physical');
+addBotMessage("ご入力内容を整理してカードを作成しています...");
+updateStepIndicator("カード作成中…");
+showLoadingControls();
+// 連打（ダブルタップ）が同じ位置のキャンセルボタンに当たらないよう、少し待ってから有効化
+setTimeout(() => {
+const cancelBtn = document.getElementById('cancel-generation-btn');
+if (cancelBtn && token === flowToken) cancelBtn.disabled = false;
+}, 1000);
+
+
+const slowTimer = setTimeout(() => {
+const sub = document.getElementById('loading-sub');
+if (sub && token === flowToken) sub.textContent = '応答に時間がかかっています。応答がない場合は定型の助言でカードを作成します。';
+}, 5000);
+
+
+let advice = null;
+try {
+advice = await fetchGeminiAdvice(buildAdvicePayload(), token);
+} catch (e) {
+advice = null;
+} finally {
+clearTimeout(slowTimer);
+}
+
+
+// 待っている間に「戻る」「やり直す」が押されていたら結果を捨てる
+if (token !== flowToken) return;
+setBusy(false);
+
+
+state.geminiAdvice = advice || buildFallbackAdvice();
+state.adviceSource = advice ? 'ai' : 'template';
+addBotMessage("✅ カードができました！\n下のプレビューを確認して、画像・PDFで保存するか印刷してください。");
+renderCard();
+}
+
+
+function renderCard() {
+updateStepIndicator("カード完成・プレビュー");
+const isMental = isMentalMode();
+const created = new Date().toLocaleString('ja-JP', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+const adviceNote = state.adviceSource === 'ai'
+? 'AIが作成した伝え方のヒントです（医学的な判断ではありません）'
+: '伝え方のヒント（定型文）';
+const ageText = state.ageGroup || '';
+let cardContentHtml = '';
+
+
+if (isMental) {
+cardContentHtml = `
+<div id="pdf-card" class="bg-white border-2 border-purple-600 p-3.5 sm:p-4 rounded-2xl text-slate-800 font-sans shadow-md text-xs space-y-3 relative">
+<div class="border-b-2 border-purple-600 pb-2 flex justify-between items-start gap-2">
+<div class="min-w-0">
+<div class="flex items-center gap-1.5">
+<span class="text-base">🌙</span>
+<h2 class="font-bold text-sm text-purple-900 tracking-wide">KOTOHANA 心の相談メモ</h2>
+</div>
+<div class="text-[11px] font-bold text-purple-700 mt-0.5">【宛先】 ${esc(state.destination)}</div>
+</div>
+<span class="text-[8px] bg-purple-50 text-purple-700 border border-purple-200 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">完全匿名</span>
+</div>
+
+
+${ageText ? `<div class="bg-purple-50/50 p-2 rounded-xl border border-purple-100 text-[10.5px]"><div><b>年齢区分:</b> ${esc(ageText)}</div></div>` : ''}
+
+
+<div class="space-y-1 text-[10.5px]">
+<div class="font-bold text-purple-800 border-b border-purple-100 pb-0.5">■ 気になる心の状態・悩み</div>
+<div class="font-bold text-slate-900 bg-purple-50/50 p-2 rounded-lg border border-purple-100">${esc(state.symptom || '未記入')}</div>
+<div><b>・継続期間:</b> ${esc(state.onset || '未記入')}</div>
+</div>
+
+
+<div class="bg-purple-50/80 p-2 rounded-xl border border-purple-200 text-[10px]">
+<div class="font-bold text-purple-900 flex items-center gap-1 mb-0.5">💡 相談サポート助言:</div>
+<div class="text-purple-950 whitespace-pre-wrap">${esc(state.geminiAdvice)}</div>
+<div class="text-[8.5px] text-purple-700/80 mt-1">※${esc(adviceNote)}</div>
+</div>
+
+
+<div class="space-y-1 text-[10.5px]">
+<div class="font-bold text-purple-800 border-b border-purple-100 pb-0.5">■ 日常生活への影響</div>
+<div>${esc(state.impact || '特になし')}</div>
+</div>
+
+
+<div class="space-y-1 text-[10.5px]">
+<div class="font-bold text-purple-800 border-b border-purple-100 pb-0.5">■ 希望するサポート・配慮</div>
+<div>${esc(state.expectations || '特になし')}</div>
+</div>
+
+
+<div class="bg-purple-50/80 p-2.5 rounded-xl border border-purple-200 text-[10.5px]">
+<div class="font-bold text-purple-900 mb-0.5">💬 伝えたいメッセージ:</div>
+<div class="text-slate-700 italic whitespace-pre-wrap">"${esc(state.finalNotes)}"</div>
+</div>
+
+
+<div class="text-[9px] text-slate-500 leading-relaxed border-t border-purple-100 pt-1.5">
+つらさが強くなったときは一人で抱えず、すぐに周りの大人へ。24時間子供SOSダイヤル 0120-0-78310 / こころの健康相談統一ダイヤル 0570-064-556<br>
+作成日時: ${esc(created)}　※このメモは診断ではありません。
+</div>
+</div>
+`;
+} else {
+const drugRec = getDrugRecommendations(
+state.symptom,
+state.calculatedAge,
+state.history,
+state.doping,
+state.currentMeds,
+state.allergies,
+state.pregnancy
+);
+const bodyText = `${state.height ? esc(state.height) + 'cm' : '未回答'} / ${state.weight ? esc(state.weight) + 'kg' : '未回答'}`;
+
+
+cardContentHtml = `
+<div id="pdf-card" class="bg-white border-2 border-teal-600 p-3.5 sm:p-4 rounded-2xl text-slate-800 font-sans shadow-md text-xs space-y-3 relative">
+<div class="border-b-2 border-teal-600 pb-2 flex justify-between items-start gap-2">
+<div class="min-w-0">
+<div class="flex items-center gap-1.5">
+<span class="text-base">🩺</span>
+<h2 class="font-bold text-sm text-teal-900 tracking-wide">KOTOHANA 体調相談カード</h2>
+</div>
+<div class="text-[11px] font-bold text-teal-700 mt-0.5">【宛先】 ${esc(state.destination)}</div>
+</div>
+<span class="text-[8px] bg-teal-50 text-teal-700 border border-teal-200 px-2 py-0.5 rounded-full font-bold whitespace-nowrap">完全匿名</span>
+</div>
+
+
+<div class="grid grid-cols-2 gap-2 bg-teal-50/50 p-2 rounded-xl border border-teal-100 text-[10.5px]">
+<div><b>年齢区分:</b> ${esc(ageText || '未回答')}</div>
+<div><b>体格目安:</b> ${bodyText}</div>
+</div>
+
+
+<div class="space-y-1 text-[10.5px]">
+<div class="font-bold text-teal-800 border-b border-teal-100 pb-0.5">■ 症状・不調の内容</div>
+<div class="font-bold text-slate-900 bg-teal-50/50 p-2 rounded-lg border border-teal-100">${esc(state.symptom || '未記入')}</div>
+<div class="flex flex-wrap justify-between gap-x-2 text-[10px] text-slate-600 pt-0.5">
+<span><b>発症:</b> ${esc(state.onset || '未記入')}</span>
+<span><b>つらさ度:</b> <b class="text-teal-700">esc(state.severity)/10</b>（{esc(severityText(state.severity, false))}）</span>
+</div>
+</div>
+
+
+<div class="bg-amber-50/80 p-2 rounded-xl border border-amber-200 text-[10px] space-y-1">
+<div class="font-bold text-amber-900 flex items-center gap-1">💊 服薬安全チェック事項:</div>
+<div class="text-amber-950 font-medium leading-relaxed space-y-0.5">${drugRec.warnings.map(w => `<div>${esc(w)}</div>`).join('')}</div>
+<div class="text-[9.5px] text-amber-900 pt-0.5"><b>相談の目安となる薬の分類（参考）:</b> ${esc(drugRec.category)}<br>※使用できるかどうか・どの製品を選ぶかは、必ず薬剤師・医師が判断します。</div>
+</div>
+
+
+${drugRec.referral.length ? `
+<div class="bg-rose-50/80 p-2 rounded-xl border border-rose-200 text-[10px] space-y-0.5">
+<div class="font-bold text-rose-900">🏥 受診の目安:</div>
+${drugRec.referral.map(r => `<div class="text-rose-950">・${esc(r)}</div>`).join('')}
+</div>` : ''}
+
+
+<div class="bg-teal-50/80 p-2 rounded-xl border border-teal-200 text-[10px]">
+<div class="font-bold text-teal-900 flex items-center gap-1 mb-0.5">💡 相談サポート助言:</div>
+<div class="text-teal-950 whitespace-pre-wrap">${esc(state.geminiAdvice)}</div>
+<div class="text-[8.5px] text-teal-700/80 mt-1">※${esc(adviceNote)}</div>
+</div>
+
+
+<div class="space-y-1 text-[10.5px]">
+<div class="font-bold text-teal-800 border-b border-teal-100 pb-0.5">■ 安全確認情報（服薬・持病等）</div>
+<div><b>・現在服用中の薬:</b> ${esc(state.currentMeds || 'なし')}</div>
+<div><b>・アレルギー/過敏症:</b> ${esc(state.allergies || 'なし')}</div>
+<div><b>・持病・副作用歴:</b> ${esc(state.history || 'なし')}</div>
+<div><b>・ドーピング考慮:</b> ${esc(state.doping || '未回答')}</div>
+<div><b>・妊娠・授乳:</b> ${esc(state.pregnancy)}</div>
+</div>
+
+
+<div class="space-y-1 text-[10.5px]">
+<div class="font-bold text-teal-800 border-b border-teal-100 pb-0.5">■ 希望する配慮</div>
+<div>${esc(state.expectations || '特になし')}</div>
+</div>
+
+
+<div class="bg-teal-50/80 p-2.5 rounded-xl border border-teal-200 text-[10.5px]">
+<div class="font-bold text-teal-900 mb-0.5">💬 伝えたいメッセージ:</div>
+<div class="text-slate-700 italic whitespace-pre-wrap">"${esc(state.finalNotes)}"</div>
+</div>
+
+
+<div class="text-[9px] text-slate-500 leading-relaxed border-t border-teal-100 pt-1.5">
+作成日時: ${esc(created)}　※このカードは診断ではありません。市販薬の使用可否は薬剤師・医師にご確認ください。
+</div>
+</div>
+`;
+}
+
+
+const pngBtnClass = isMental ? "bg-purple-800 hover:bg-purple-900" : "bg-emerald-700 hover:bg-emerald-800";
+const pdfBtnClass = isMental ? "bg-purple-700 hover:bg-purple-800" : "bg-teal-700 hover:bg-teal-800";
+
+
+setControls(`
+<div id="printable-card-area" class="max-h-[280px] sm:max-h-[340px] overflow-y-auto p-1 bg-slate-50 border border-slate-200 rounded-2xl">
+${cardContentHtml}
+</div>
+
+
+<div class="space-y-1.5 mt-2 no-print">
+<div id="export-status" class="text-[11px] font-bold text-center min-h-[1em]" role="status" aria-live="polite"></div>
+<button type="button" data-export onclick="downloadPNG()" class="w-full py-2.5 ${pngBtnClass} text-white font-bold rounded-xl text-xs shadow-md transition flex items-center justify-center gap-2 active:scale-98">
+🖼️ KOTOHANAカード（PNG画像）を保存
+</button>
+<button type="button" data-export onclick="downloadPDF()" class="w-full py-2.5 ${pdfBtnClass} text-white font-bold rounded-xl text-xs shadow-md transition flex items-center justify-center gap-2 active:scale-98">
+📄 KOTOHANAカード（PDF）を保存
+</button>
+<button type="button" data-export onclick="printCard()" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-xs transition flex items-center justify-center gap-2 border border-slate-300 active:scale-98">
+🖨️ KOTOHANAカードを直接印刷
+</button>
+<button type="button" onclick="startInitialFlow()" class="w-full py-1.5 bg-white text-slate-500 font-medium rounded-xl text-[11px] text-center border border-slate-200">
+🔄 別の内容で最初からやり直す
+</button>
+</div>
+`);
+chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+
+// ============================================================
+// PNG / PDF / 印刷
+// ============================================================
+const EXPORT_WIDTH_PX = 560;
+
+
+function setExportStatus(message, kind) {
+const el = document.getElementById('export-status');
+if (!el) return;
+el.textContent = message || '';
+el.className = 'text-[11px] font-bold text-center min-h-[1em] ' +
+(kind === 'error' ? 'text-rose-700' : kind === 'ok' ? 'text-emerald-700' : 'text-slate-600');
+}
+
+
+function setExportButtonsDisabled(disabled) {
+document.querySelectorAll('[data-export]').forEach(b => { b.disabled = disabled; });
+if (backBtn) backBtn.disabled = disabled || isBusy;
+}
+
+
+// スクロール枠の外に、固定幅・高さ制限なしのカードの複製を作る（切れ・崩れ防止）
+function createExportStage() {
+const src = document.getElementById('pdf-card');
+if (!src) return null;
+const stage = document.createElement('div');
+stage.setAttribute('aria-hidden', 'true');
+stage.style.cssText = `position:absolute;left:-10000px;top:0;width:${EXPORT_WIDTH_PX}px;padding:16px;background:#ffffff;`;
+const clone = src.cloneNode(true);
+clone.removeAttribute('id');
+clone.classList.remove('shadow-md');
+clone.style.margin = '0';
+stage.appendChild(clone);
+document.body.appendChild(stage);
+return stage;
+}
+
+
+async function waitForFonts() {
+try {
+if (document.fonts && document.fonts.ready) {
+await Promise.race([document.fonts.ready, new Promise(r => setTimeout(r, 3000))]);
+}
+} catch (e) { /* noop */ }
+}
+
+
+async function renderCardCanvas() {
+if (typeof html2canvas !== 'function') throw new Error('html2canvas-missing');
+await waitForFonts();
+const stage = createExportStage();
+if (!stage) throw new Error('card-missing');
+try {
+return await html2canvas(stage, {
+scale: 2,
+backgroundColor: '#ffffff',
+useCORS: true,
+logging: false,
+windowWidth: Math.max(document.documentElement.clientWidth, EXPORT_WIDTH_PX + 40),
+scrollX: 0,
+scrollY: 0
+});
+} finally {
+stage.remove();
+}
+}
+
+
+function canvasToBlob(canvas, type, quality) {
+return new Promise((resolve, reject) => {
+canvas.toBlob(b => (b ? resolve(b) : reject(new Error('blob-failed'))), type, quality);
+});
+}
+
+
+// スマホは共有メニュー（写真に保存など）、PCは通常のダウンロード
+async function deliverFile(blob, filename, mime) {
+const isTouch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+if (isTouch && navigator.canShare) {
+try {
+const file = new File([blob], filename, { type: mime });
+if (navigator.canShare({ files: [file] })) {
+await navigator.share({ files: [file], title: 'KOTOHANA相談カード' });
+return 'shared';
+}
+} catch (err) {
+if (err && err.name === 'AbortError') return 'cancelled';
+// 共有できない場合は通常のダウンロードへ
+}
+}
+const url = URL.createObjectURL(blob);
+const link = document.createElement('a');
+link.href = url;
+link.download = filename;
+link.rel = 'noopener';
+document.body.appendChild(link);
+link.click();
+link.remove();
+setTimeout(() => URL.revokeObjectURL(url), 10000);
+return 'downloaded';
+}
+
+
+function exportErrorMessage(err) {
+const code = err && err.message;
+if (code === 'html2canvas-missing' || code === 'html2pdf-missing') {
+return '保存に必要な部品を読み込めませんでした。通信環境を確認して再読み込みしてください。';
+}
+return '保存に失敗しました。もう一度お試しいただくか、「直接印刷」をご利用ください。';
+}
+
+
+window.downloadPNG = async function() {
+if (isExporting || !document.getElementById('pdf-card')) return;
+isExporting = true;
+setExportButtonsDisabled(true);
+setExportStatus('PNG画像を作成しています…');
+try {
+const canvas = await renderCardCanvas();
+const blob = await canvasToBlob(canvas, 'image/png');
+const result = await deliverFile(blob, 'KOTOHANA相談カード.png', 'image/png');
+if (result !== 'cancelled') hasExported = true;
+setExportStatus(result === 'cancelled' ? '' : '✅ PNG画像を保存しました', 'ok');
+} catch (err) {
+console.warn('PNG export failed:', err && err.message);
+setExportStatus(exportErrorMessage(err), 'error');
+} finally {
+isExporting = false;
+setExportButtonsDisabled(false);
+}
+};
+
+
+// 白紙1ページのA4 PDF（jsPDF）を用意する。
+// html2pdf のバンドル版は jsPDF をグローバルに公開しないため、html2pdf が作るインスタンスを再利用する。
+async function createBlankA4Pdf() {
+if (window.jspdf && window.jspdf.jsPDF) return new window.jspdf.jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+if (typeof html2pdf !== 'function') throw new Error('html2pdf-missing');
+const tiny = document.createElement('canvas');
+tiny.width = 1; tiny.height = 1;
+const pdf = await html2pdf().set({ margin: 0, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(tiny, 'canvas').toPdf().get('pdf');
+pdf.addPage();
+pdf.deletePage(1);
+return pdf;
+}
+
+
+// A4に収まるよう縮小。長すぎる場合は複数ページに分割する
+async function buildPdfBlob(canvas) {
+const pdf = await createBlankA4Pdf();
+const pageW = 210, pageH = 297, margin = 10;
+const maxW = pageW - margin * 2, maxH = pageH - margin * 2;
+const pxPerMm = canvas.width / maxW;
+const fullHeightMm = canvas.height / pxPerMm;
+
+
+if (fullHeightMm <= maxH) {
+pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', margin, margin, maxW, fullHeightMm);
+} else if (maxH / fullHeightMm >= 0.72) {
+const scale = maxH / fullHeightMm;
+const w = maxW * scale;
+pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', (pageW - w) / 2, margin, w, maxH);
+} else {
+const sliceMaxPx = Math.floor(maxH * pxPerMm);
+let y = 0;
+let first = true;
+while (y < canvas.height) {
+const h = Math.min(sliceMaxPx, canvas.height - y);
+const slice = document.createElement('canvas');
+slice.width = canvas.width;
+slice.height = h;
+const ctx = slice.getContext('2d');
+ctx.fillStyle = '#ffffff';
+ctx.fillRect(0, 0, slice.width, slice.height);
+ctx.drawImage(canvas, 0, y, canvas.width, h, 0, 0, canvas.width, h);
+if (!first) pdf.addPage();
+pdf.addImage(slice.toDataURL('image/jpeg', 0.95), 'JPEG', margin, margin, maxW, h / pxPerMm);
+first = false;
+y += h;
+}
+}
+return pdf.output('blob');
+}
+
+
+window.downloadPDF = async function() {
+if (isExporting || !document.getElementById('pdf-card')) return;
+isExporting = true;
+setExportButtonsDisabled(true);
+setExportStatus('PDFを作成しています…');
+try {
+const canvas = await renderCardCanvas();
+const blob = await buildPdfBlob(canvas);
+const result = await deliverFile(blob, 'KOTOHANA相談カード.pdf', 'application/pdf');
+if (result !== 'cancelled') hasExported = true;
+setExportStatus(result === 'cancelled' ? '' : '✅ PDFを保存しました', 'ok');
+} catch (err) {
+console.warn('PDF export failed:', err && err.message);
+setExportStatus(exportErrorMessage(err), 'error');
+} finally {
+isExporting = false;
+setExportButtonsDisabled(false);
+}
+};
+
+
+// ポップアップを使わず、同じページの印刷専用領域にカードを複製して印刷する
+// （ポップアップブロックや、別ウィンドウでスタイルが読み込まれる前に印刷される問題を回避）
+window.printCard = function() {
+const cardElement = document.getElementById('pdf-card');
+const printRoot = document.getElementById('print-root');
+if (!cardElement || !printRoot) return;
+const clone = cardElement.cloneNode(true);
+clone.removeAttribute('id');
+clone.classList.add('print-card');
+if (isMentalMode()) clone.classList.add('mental');
+printRoot.innerHTML = '';
+printRoot.appendChild(clone);
+const cleanup = () => { printRoot.innerHTML = ''; window.removeEventListener('afterprint', cleanup); };
+window.addEventListener('afterprint', cleanup);
+hasExported = true;
+try {
+window.print();
+} catch (err) {
+setExportStatus('印刷を開始できませんでした。ブラウザのメニューから印刷してください。', 'error');
+}
+};
+
+
+// ============================================================
+// チャット表示（利用者の入力は必ずエスケープしてから表示）
+// ============================================================
+function addBotMessage(text, force = false) {
+if (suppressBotMessages && !force) return;
+const mental = isMentalMode();
+const avatar = mental
+? '<div class="w-7 h-7 rounded-full bg-purple-100 border border-purple-200 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">🌙</div>'
+: '<div class="w-7 h-7 rounded-full bg-teal-100 border border-teal-200 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">🌱</div>';
+const border = mental ? 'border-purple-100' : 'border-teal-100';
+const div = document.createElement('div');
+div.className = "flex justify-start transition-all duration-300";
+div.innerHTML = `<div class="flex items-start gap-2 max-w-[88%] min-w-0">${avatar}<div class="bubble p-3.5 rounded-2xl rounded-tl-sm text-xs sm:text-sm bg-white text-slate-800 border bordershadow-smleading-relaxedwhitespace-pre-wrapmin-w-0">{formatMessage(text)}</div></div>`;
+chatContainer.appendChild(div);
+chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+
+function addUserMessage(text) {
+const gradient = isMentalMode() ? 'from-purple-800 to-fuchsia-800' : 'from-teal-700 to-emerald-700';
+const div = document.createElement('div');
+div.className = "flex justify-end transition-all duration-300";
+const bubble = document.createElement('div');
+bubble.className = `bubble max-w-[85%] p-3.5 rounded-2xl rounded-tr-sm text-xs sm:text-sm bg-gradient-to-r ${gradient} text-white shadow-md leading-relaxed whitespace-pre-wrap font-medium`;
+bubble.textContent = text; // HTMLとして解釈させない
+div.appendChild(bubble);
+chatContainer.appendChild(div);
+chatContainer.scrollTop = chatContainer.scrollHeight;
+}
+
+
+function calculateAge(birthdateStr) {
+const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(birthdateStr || ''));
+if (!m) return null;
+const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+const birthDate = new Date(y, mo - 1, d);
+if (isNaN(birthDate.getTime()) || birthDate.getMonth() !== mo - 1 || birthDate.getDate() !== d) return null;
+const today = new Date();
+if (birthDate > today) return null;
+let age = today.getFullYear() - y;
+const diff = today.getMonth() - (mo - 1);
+if (diff < 0 || (diff === 0 && today.getDate() < d)) age--;
+return age;
+}
+</script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
