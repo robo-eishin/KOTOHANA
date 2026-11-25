@@ -2156,7 +2156,7 @@ const avatar = mental
 const border = mental ? 'border-purple-100' : 'border-teal-100';
 const div = document.createElement('div');
 div.className = "flex justify-start transition-all duration-300";
-div.innerHTML = `<div class="flex items-start gap-2 max-w-[88%] min-w-0">${avatar}<div class="bubble p-3.5 rounded-2xl rounded-tl-sm text-xs sm:text-sm bg-white text-slate-800 border bordershadow-smleading-relaxedwhitespace-pre-wrapmin-w-0">{formatMessage(text)}</div></div>`;
+div.innerHTML = `<div class="flex items-start gap-2 max-w-[88%] min-w-0">${avatar}<div class="bubble p-3.5 rounded-2xl rounded-tl-sm text-xs sm:text-sm bg-white text-slate-800 border bordershadow-smleading-relaxedwhitespace-pre-wrapmin-w-0">${formatMessage(text)}</div></div>`;
 chatContainer.appendChild(div);
 chatContainer.scrollTop = chatContainer.scrollHeight;
 }
